@@ -5,15 +5,16 @@
 ## usage
 ```go get -u github.com/wendigo/chrome-protocol-proxy```
 
-```chrome-protocol-proxy --help```
-
 ## configuration options
 ```
+ Usage of chrome-protocol-proxy:
   -l string
     	listen address (default "localhost:9223")
   -log string
     	log file mask (default "logs/cdp-%s.log")
   -n	disable logging to file
+  -once
+    	debug single session
   -r string
     	remote address (default "localhost:9222")
   -s	shorten requests and responses
