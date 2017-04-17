@@ -33,6 +33,7 @@ var (
 	requestColor = color.New(color.FgGreen).SprintfFunc()
 	eventsColor = color.New(color.FgHiRed).SprintfFunc()
 	protocolColor = color.New(color.FgYellow).SprintfFunc()
+	protocolError = color.New(color.FgHiYellow, color.BgRed).SprintfFunc()
 	targetColor = color.New(color.FgHiWhite).SprintfFunc()
 	methodColor = color.New(color.FgHiYellow).SprintfFunc()
 	errorColor = color.New(color.BgRed, color.FgWhite).SprintfFunc()
@@ -86,7 +87,7 @@ func main() {
 		ver, err := checkVersion()
 		if err != nil {
 			msg := fmt.Sprintf("version error, got: %v", err)
-			logger.Println(msg)
+			logger.Println(protocolError(msg))
 			http.Error(res, msg, 500)
 			return
 		}
@@ -99,7 +100,7 @@ func main() {
 		out, pres, err := wsDialer.Dial(endpoint, nil)
 		if err != nil {
 			msg := fmt.Sprintf("could not connect to %s, got: %v", endpoint, err)
-			logger.Println(protocolColor(msg))
+			logger.Println(protocolError(msg))
 			http.Error(res, msg, 500)
 			return
 		}
@@ -113,7 +114,7 @@ func main() {
 		in, err := wsUpgrader.Upgrade(res, req, nil)
 		if err != nil {
 			msg := fmt.Sprintf("could not upgrade websocket from %s, got: %v", req.RemoteAddr, err)
-			logger.Println(protocolColor(msg))
+			logger.Println(protocolError(msg))
 			http.Error(res, msg, 500)
 			return
 		}
