@@ -26,25 +26,26 @@ var (
 	flagNoLog    = flag.Bool("n", false, "disable logging to file")
 	flagLogMask  = flag.String("log", "logs/cdp-%s.log", "log file mask")
 	flagEllipsis = flag.Bool("s", false, "shorten requests and responses")
-	flagOnce = flag.Bool("once", false, "debug single session")
+	flagOnce     = flag.Bool("once", false, "debug single session")
 )
-
 
 var (
 	responseColor = color.New(color.FgHiGreen).SprintfFunc()
-	requestColor = color.New(color.FgGreen).SprintfFunc()
-	eventsColor = color.New(color.FgHiRed).SprintfFunc()
+	requestColor  = color.New(color.FgGreen).SprintfFunc()
+	eventsColor   = color.New(color.FgHiRed).SprintfFunc()
 	protocolColor = color.New(color.FgYellow).SprintfFunc()
 	protocolError = color.New(color.FgHiYellow, color.BgRed).SprintfFunc()
-	targetColor = color.New(color.FgHiWhite).SprintfFunc()
-	methodColor = color.New(color.FgHiYellow).SprintfFunc()
-	errorColor = color.New(color.BgRed, color.FgWhite).SprintfFunc()
+	targetColor   = color.New(color.FgHiWhite).SprintfFunc()
+	methodColor   = color.New(color.FgHiYellow).SprintfFunc()
+	errorColor    = color.New(color.BgRed, color.FgWhite).SprintfFunc()
 )
 
 const (
 	incomingBufferSize = 10 * 1024 * 1024
 	outgoingBufferSize = 25 * 1024 * 1024
 	ellipsisLength     = 80
+	requestReplyFormat = "%s % 48s(%s) = %s"
+	eventFormat        = "%s % 48s(%s)"
 )
 
 var protocolTargetId = center("protocol message", 36)
@@ -61,7 +62,6 @@ var wsDialer = &websocket.Dialer{
 	ReadBufferSize:  outgoingBufferSize,
 	WriteBufferSize: incomingBufferSize,
 }
-
 
 func main() {
 	flag.Parse()
@@ -100,7 +100,6 @@ func main() {
 		logger.Print(protocolColor("versions: Chrome(%s), V8(%s), Webkit(%s)", ver["Browser"], ver["V8-Version"], ver["WebKit-Version"]))
 		logger.Print(protocolColor("browser user agent: %s", ver["User-Agent"]))
 
-
 		// connect outgoing websocket
 		logger.Print(protocolColor("connecting to %s... ", endpoint))
 		out, pres, err := wsDialer.Dial(endpoint, nil)
@@ -137,7 +136,6 @@ func main() {
 		}
 	})
 
-
 	log.Fatal(http.ListenAndServe(*flagListen, mux))
 }
 
@@ -169,7 +167,7 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 				if msg.IsEvent() {
 					if protocolMessage, err := decodeMessage([]byte(asString(msg.Params["message"]))); err == nil {
 						if protocolMessage.IsEvent() {
-							logger.Printf("%s %36s(%s)", targetColor("%s", msg.Params["targetId"]), methodColor(protocolMessage.Method), eventsColor(serialize(protocolMessage.Params)))
+							logger.Printf(eventFormat, targetColor("%s", msg.Params["targetId"]), methodColor(protocolMessage.Method), eventsColor(serialize(protocolMessage.Params)))
 						}
 
 						if protocolMessage.IsResponse() {
@@ -177,9 +175,9 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 								delete(targetRequests, protocolMessage.Id)
 
 								if protocolMessage.IsError() {
-									logger.Printf("%s %36s(%s) = %s", targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(protocolMessage.Error)))
+									logger.Printf(requestReplyFormat, targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(protocolMessage.Error)))
 								} else {
-									logger.Printf("%s %36s(%s) = %s", targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestColor(serialize(request.Params)), responseColor(serialize(protocolMessage.Result)))
+									logger.Printf(requestReplyFormat, targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestColor(serialize(request.Params)), responseColor(serialize(protocolMessage.Result)))
 								}
 							} else {
 								logger.Printf(protocolColor("Could not find target request with id: %d", protocolMessage.Id))
@@ -201,18 +199,18 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 
 						if request != nil {
 							if msg.IsError() {
-								logger.Printf("%s %36s(%s) = %s", targetColor(protocolTargetId), methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(msg.Error)))
+								logger.Printf(requestReplyFormat, targetColor(protocolTargetId), methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(msg.Error)))
 							} else {
-								logger.Printf("%s %36s(%s) = %s", targetColor(protocolTargetId), methodColor(request.Method), requestColor(serialize(request.Params)), responseColor(serialize(msg.Result)))
+								logger.Printf(requestReplyFormat, targetColor(protocolTargetId), methodColor(request.Method), requestColor(serialize(request.Params)), responseColor(serialize(msg.Result)))
 							}
 						}
 					} else {
-					logger.Printf(protocolColor("Could not find request with id: %d", msg.Id))
+						logger.Printf(protocolColor("Could not find request with id: %d", msg.Id))
 					}
 				}
 
 				if msg.IsEvent() {
-					logger.Printf("%s %36s(%s)", targetColor(protocolTargetId), methodColor(msg.Method), eventsColor(serialize(msg.Params)))
+					logger.Printf(eventFormat, targetColor(protocolTargetId), methodColor(msg.Method), eventsColor(serialize(msg.Params)))
 				}
 			}
 		}
@@ -252,7 +250,7 @@ func proxyWS(ctxt context.Context, stream chan *protocolMessage, in, out *websoc
 
 func checkVersion() (map[string]string, error) {
 	cl := &http.Client{}
-	req, err := http.NewRequest("GET", "http://" + *flagRemote + "/json/version", nil)
+	req, err := http.NewRequest("GET", "http://" + *flagRemote+"/json/version", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -286,4 +284,3 @@ func createLog(id string) (io.Closer, *log.Logger) {
 	}
 	return f, log.New(w, "", log.Lmicroseconds)
 }
-
