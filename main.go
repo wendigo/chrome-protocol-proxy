@@ -163,7 +163,7 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 				if msg.IsEvent() {
 					if protocolMessage, err := decodeMessage([]byte(asString(msg.Params["message"]))); err == nil {
 						if protocolMessage.IsEvent() {
-							logger.Printf("%s %36s <- %s", targetColor("%s", msg.Params["targetId"]), methodColor(protocolMessage.Method), eventsColor(serialize(protocolMessage.Params)))
+							logger.Printf("%s %36s(%s)", targetColor("%s", msg.Params["targetId"]), methodColor(protocolMessage.Method), eventsColor(serialize(protocolMessage.Params)))
 						}
 
 						if protocolMessage.IsResponse() {
@@ -192,7 +192,7 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 				if msg.IsResponse() {
 					if request, ok := requests[msg.Id]; ok {
 						delete(requests, msg.Id)
-						
+
 						if request != nil {
 							if msg.IsError() {
 								logger.Printf("%s %36s(%s) = %s", targetColor(protocolTargetId), methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(msg.Error)))
@@ -206,7 +206,7 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 				}
 
 				if msg.IsEvent() {
-					logger.Printf("%s %36s <- %s", targetColor(protocolTargetId), methodColor(msg.Method), eventsColor(serialize(msg.Params)))
+					logger.Printf("%s %36s(%s)", targetColor(protocolTargetId), methodColor(msg.Method), eventsColor(serialize(msg.Params)))
 				}
 			}
 		}
