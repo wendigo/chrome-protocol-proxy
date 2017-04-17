@@ -25,6 +25,7 @@ var (
 	flagNoLog    = flag.Bool("n", false, "disable logging to file")
 	flagLogMask  = flag.String("log", "logs/cdp-%s.log", "log file mask")
 	flagEllipsis = flag.Bool("s", false, "shorten requests and responses")
+	flagOnce = flag.Bool("once", false, "debug single session")
 )
 
 
@@ -129,6 +130,10 @@ func main() {
 		go proxyWS(ctxt, stream, out, in, errc)
 		<-errc
 		logger.Printf(protocolColor("---------- closing %s ----------", req.RemoteAddr))
+
+		if *flagOnce {
+			os.Exit(0)
+		}
 	})
 
 
