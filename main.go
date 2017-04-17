@@ -143,18 +143,18 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 		responseColor("received responses."),
 	)
 
-	requestNames := make(map[uint64]*protocolMessage)
-	requestTargetNames := make(map[uint64]*protocolMessage)
+	requests := make(map[uint64]*protocolMessage)
+	targetRequests := make(map[uint64]*protocolMessage)
 
 	for {
 		select {
 		case msg := <-stream:
 			if msg.InTarget() {
 				if msg.IsRequest() {
-					requestNames[msg.Id] = nil
+					requests[msg.Id] = nil
 
 					if protocolMessage, err := decodeMessage([]byte(asString(msg.Params["message"]))); err == nil {
-						requestTargetNames[protocolMessage.Id] = protocolMessage
+						targetRequests[protocolMessage.Id] = protocolMessage
 					} else {
 						logger.Printf(protocolColor("Could not deserialize message: %+v", err))
 					}
@@ -167,7 +167,9 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 						}
 
 						if protocolMessage.IsResponse() {
-							if request, ok := requestTargetNames[protocolMessage.Id]; ok {
+							if request, ok := targetRequests[protocolMessage.Id]; ok {
+								delete(targetRequests, protocolMessage.Id)
+
 								if protocolMessage.IsError() {
 									logger.Printf("%s %36s(%s) = %s", targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(protocolMessage.Error)))
 								} else {
@@ -184,11 +186,13 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 
 			} else {
 				if msg.IsRequest() {
-					requestNames[msg.Id] = msg
+					requests[msg.Id] = msg
 				}
 
 				if msg.IsResponse() {
-					if request, ok := requestNames[msg.Id]; ok {
+					if request, ok := requests[msg.Id]; ok {
+						delete(requests, msg.Id)
+						
 						if request != nil {
 							if msg.IsError() {
 								logger.Printf("%s %36s(%s) = %s", targetColor(protocolTargetId), methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(msg.Error)))
