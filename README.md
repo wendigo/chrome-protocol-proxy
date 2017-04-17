@@ -27,7 +27,7 @@
   ```
   
 ## demo
-[![asciicast](https://asciinema.org/a/113947.png)](https://asciinema.org/a/113947?t=0:05)
+[![asciicast](https://asciinema.org/a/113947.png)](https://asciinema.org/a/113947?t=0:04)
 
 ## tips & tricks
 
