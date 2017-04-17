@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -21,11 +20,11 @@ import (
 )
 
 var (
-	flagListen  = flag.String("l", "localhost:9223", "listen address")
-	flagRemote  = flag.String("r", "localhost:9222", "remote address")
-	flagNoLog   = flag.Bool("n", false, "disable logging to file")
-	flagLogMask = flag.String("log", "logs/cdp-%s.log", "log file mask")
-	flagElipse  = flag.Bool("s", false, "shorten responses")
+	flagListen   = flag.String("l", "localhost:9223", "listen address")
+	flagRemote   = flag.String("r", "localhost:9222", "remote address")
+	flagNoLog    = flag.Bool("n", false, "disable logging to file")
+	flagLogMask  = flag.String("log", "logs/cdp-%s.log", "log file mask")
+	flagEllipsis = flag.Bool("s", false, "shorten requests and responses")
 )
 
 
@@ -42,10 +41,10 @@ var (
 const (
 	incomingBufferSize = 10 * 1024 * 1024
 	outgoingBufferSize = 25 * 1024 * 1024
-	elipseLength = 80
+	ellipsisLength     = 80
 )
 
-var mainProtocolId = fmt.Sprintf("%-36s", "main protocol target")
+var protocolTargetId = center("protocol message", 36)
 
 var wsUpgrader = &websocket.Upgrader{
 	ReadBufferSize:  incomingBufferSize,
@@ -60,65 +59,17 @@ var wsDialer = &websocket.Dialer{
 	WriteBufferSize: incomingBufferSize,
 }
 
-type protocolMessage struct {
-	Id uint64 `json:"id"`
-	Result map[string]interface{} `json:"result"`
-	Error struct {
-		Code int64 `json:"code"`
-		Message string `json:"message"`
-		Data string `json:"data"`
-	} `json:"error"`
-	Method string `json:"method"`
-	Params map[string]interface{} `json:"params"`
-}
-
-type targetedProtocolMessage struct {
-	TargetId string `json:"targetId"`
-	Message string `json:"message"`
-}
-
-func (t *targetedProtocolMessage) ProtocolMessage() (*protocolMessage, error) {
-	return decodeMessage([]byte(t.Message))
-}
-
-func (p *protocolMessage) String() string {
-	return fmt.Sprintf(
-		"protocolMessage{id=%d, method=%s, result=%+v, error=%+v, params=%+v}",
-		p.Id,
-		p.Method,
-		p.Result,
-		p.Error,
-		p.Params,
-	)
-}
-
-func (p *protocolMessage) IsError() bool {
-	return p.Error.Code != 0
-}
-
-func (p *protocolMessage) IsResponse() bool {
-	return p.Method == "" && p.Id > 0
-}
-
-func (p *protocolMessage) IsRequest() bool {
-	return p.Method != "" && p.Id > 0
-}
-
-func (p *protocolMessage) IsEvent() bool {
-	return !(p.IsRequest() || p.IsResponse())
-}
-
-func (p *protocolMessage) InTarget() bool {
-	return p.Method == "Target.sendMessageToTarget" || p.Method == "Target.receivedMessageFromTarget"
-}
 
 func main() {
 	flag.Parse()
 
 	mux := http.NewServeMux()
+
 	simplep := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: *flagRemote})
+
 	mux.Handle("/json", simplep)
 	mux.Handle("/", simplep)
+
 	mux.HandleFunc("/devtools/page/", func(res http.ResponseWriter, req *http.Request) {
 
 		id := path.Base(req.URL.Path)
@@ -139,7 +90,7 @@ func main() {
 			http.Error(res, msg, 500)
 			return
 		}
-		logger.Printf(protocolColor("endpoint %s reported: %s", *flagRemote, string(ver)))
+		logger.Printf(protocolColor("endpoint %s reported: %s", *flagRemote, serialize(ver)))
 
 		endpoint := "ws://" + *flagRemote + "/devtools/page/" + id
 
@@ -183,33 +134,13 @@ func main() {
 	log.Fatal(http.ListenAndServe(*flagListen, mux))
 }
 
-func asString(value interface{}) string {
-	if casted, ok := value.(string); ok {
-		return casted
-	}
-
-	return fmt.Sprintf("%+v", value)
-}
-
-func serialize(value interface{}) string {
-	if buff, err := json.Marshal(value); err == nil {
-		if *flagElipse && len(buff) > elipseLength {
-			return string(buff[:elipseLength]) + "..."
-		}
-
-		return string(buff)
-	} else {
-		return err.Error()
-	}
-}
-
 func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
-
-
-	logger.Printf(protocolColor("Protocol messages"))
-	logger.Printf(eventsColor("Events messages"))
-	logger.Printf(requestColor("Request frames"))
-	logger.Printf(responseColor("Response frames"))
+	logger.Printf("Legend: %s, %s, %s, %s",
+		protocolColor("protocol informations"),
+		eventsColor("received events"),
+		requestColor("sent requests"),
+		responseColor("received responses."),
+	)
 
 	requestNames := make(map[uint64]*protocolMessage)
 	requestTargetNames := make(map[uint64]*protocolMessage)
@@ -259,9 +190,9 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 					if request, ok := requestNames[msg.Id]; ok {
 						if request != nil {
 							if msg.IsError() {
-								logger.Printf("%s %36s(%s) = %s", mainProtocolId, methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(msg.Error)))
+								logger.Printf("%s %36s(%s) = %s", targetColor(protocolTargetId), methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(msg.Error)))
 							} else {
-								logger.Printf("%s %36s(%s) = %s", mainProtocolId, methodColor(request.Method), requestColor(serialize(request.Params)), responseColor(serialize(msg.Result)))
+								logger.Printf("%s %36s(%s) = %s", targetColor(protocolTargetId), methodColor(request.Method), requestColor(serialize(request.Params)), responseColor(serialize(msg.Result)))
 							}
 						}
 					} else {
@@ -270,7 +201,7 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 				}
 
 				if msg.IsEvent() {
-					logger.Printf("%s %36s <- %s", mainProtocolId, methodColor(msg.Method), eventsColor(serialize(msg.Params)))
+					logger.Printf("%s %36s <- %s", targetColor(protocolTargetId), methodColor(msg.Method), eventsColor(serialize(msg.Params)))
 				}
 			}
 		}
@@ -308,19 +239,9 @@ func proxyWS(ctxt context.Context, stream chan *protocolMessage, in, out *websoc
 	}
 }
 
-func decodeMessage(bytes []byte) (*protocolMessage, error) {
-	var msg protocolMessage
-
-	if err := json.Unmarshal(bytes, &msg); err != nil {
-		return nil, err
-	}
-
-	return &msg, nil
-}
-
-func checkVersion() ([]byte, error) {
+func checkVersion() (map[string]string, error) {
 	cl := &http.Client{}
-	req, err := http.NewRequest("GET", "http://"+*flagRemote+"/json/version", nil)
+	req, err := http.NewRequest("GET", "http://" + *flagRemote + "/json/version", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -329,20 +250,15 @@ func checkVersion() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	var v map[string]string
-	err = json.Unmarshal(body, &v)
-	if err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&v); err != nil {
 		return nil, fmt.Errorf("expected json result")
 	}
 
-	return body, nil
+	return v, nil
 }
 
 func createLog(id string) (io.Closer, *log.Logger) {
