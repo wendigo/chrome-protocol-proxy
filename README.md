@@ -31,4 +31,4 @@
 
 ## tips & tricks
 
-When using [Headless Chrome](https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md) navigate to [inspectable pages](http://localhost:9222/) and open inspector pane for url of your choosing. Then replace port in ```?ws=``` query param and point it to running ```chrome-protocol-proxy``` instance (default port is 9223). Now you're able to i see what Chrome Debugger is exactly doing. Enjoy!
+When using [Headless Chrome](https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md) navigate to [inspectable pages](http://localhost:9222/) and open inspector pane for url of your choosing. Then replace port in ```?ws=``` query param and point it to running ```chrome-protocol-proxy``` instance (default port is 9223). Now you're able to see what Chrome Debugger is exactly doing. Enjoy!
