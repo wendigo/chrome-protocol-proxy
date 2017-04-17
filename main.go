@@ -17,6 +17,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/fatih/color"
+	"errors"
 )
 
 var (
@@ -74,33 +75,37 @@ func main() {
 
 	mux.HandleFunc("/devtools/page/", func(res http.ResponseWriter, req *http.Request) {
 
+		stream := make(chan *protocolMessage, 1024)
+
 		id := path.Base(req.URL.Path)
 		f, logger := createLog(id)
 		if f != nil {
 			defer f.Close()
 		}
-
-		stream := make(chan *protocolMessage, 1024)
 		go dumpStream(logger, stream)
-
-		logger.Printf(protocolColor("---------- connection from %s ----------", req.RemoteAddr))
-
-		ver, err := checkVersion()
-		if err != nil {
-			msg := fmt.Sprintf("version error, got: %v", err)
-			logger.Println(protocolError(msg))
-			http.Error(res, msg, 500)
-			return
-		}
-		logger.Printf(protocolColor("endpoint %s reported: %s", *flagRemote, serialize(ver)))
 
 		endpoint := "ws://" + *flagRemote + "/devtools/page/" + id
 
+		logger.Print(protocolColor("---------- connection from %s ----------", req.RemoteAddr))
+		logger.Print(protocolColor("checking protocol versions on: %s", endpoint))
+
+		ver, err := checkVersion()
+		if err != nil {
+			logger.Println(protocolError("could not check version: %v", err))
+			http.Error(res, "could not check version", 500)
+			return
+		}
+
+		logger.Print(protocolColor("protocol version: %s", ver["Protocol-Version"]))
+		logger.Print(protocolColor("versions: Chrome(%s), V8(%s), Webkit(%s)", ver["Browser"], ver["V8-Version"], ver["WebKit-Version"]))
+		logger.Print(protocolColor("browser user agent: %s", ver["User-Agent"]))
+
+
 		// connect outgoing websocket
-		logger.Printf(protocolColor("connecting to %s", endpoint))
+		logger.Print(protocolColor("connecting to %s... ", endpoint))
 		out, pres, err := wsDialer.Dial(endpoint, nil)
 		if err != nil {
-			msg := fmt.Sprintf("could not connect to %s, got: %v", endpoint, err)
+			msg := fmt.Sprintf("could not connect to %s: %v", endpoint, err)
 			logger.Println(protocolError(msg))
 			http.Error(res, msg, 500)
 			return
@@ -108,19 +113,15 @@ func main() {
 		defer pres.Body.Close()
 		defer out.Close()
 
-		logger.Printf(protocolColor("connected to %s", endpoint))
-
 		// connect incoming websocket
-		logger.Printf(protocolColor("upgrading connection on %s", req.RemoteAddr))
+		logger.Print(protocolColor("upgrading connection on %s...", req.RemoteAddr))
 		in, err := wsUpgrader.Upgrade(res, req, nil)
 		if err != nil {
-			msg := fmt.Sprintf("could not upgrade websocket from %s, got: %v", req.RemoteAddr, err)
-			logger.Println(protocolError(msg))
-			http.Error(res, msg, 500)
+			logger.Println(protocolError("could not upgrade websocket from %s: %v", req.RemoteAddr, err))
+			http.Error(res, "could not upgrade websocket connection", 500)
 			return
 		}
 		defer in.Close()
-		logger.Printf(protocolColor("upgraded connection on %s", req.RemoteAddr))
 
 		ctxt, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -265,7 +266,7 @@ func checkVersion() (map[string]string, error) {
 
 	var v map[string]string
 	if err := json.NewDecoder(res.Body).Decode(&v); err != nil {
-		return nil, fmt.Errorf("expected json result")
+		return nil, errors.New("expected json result")
 	}
 
 	return v, nil
