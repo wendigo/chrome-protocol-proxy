@@ -19,4 +19,5 @@
   -s	shorten requests and responses
   ```
   
-## example
+## demo
+[![asciicast](https://asciinema.org/a/4m3ix0plqbgaz1456vsekzbjy.png)](https://asciinema.org/a/4m3ix0plqbgaz1456vsekzbjy)
