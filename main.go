@@ -15,29 +15,32 @@ import (
 	"os"
 	"path"
 
-	"github.com/gorilla/websocket"
-	"github.com/fatih/color"
 	"errors"
+
+	"github.com/fatih/color"
+	"github.com/gorilla/websocket"
 )
 
 var (
-	flagListen   = flag.String("l", "localhost:9223", "listen address")
-	flagRemote   = flag.String("r", "localhost:9222", "remote address")
-	flagNoLog    = flag.Bool("n", false, "disable logging to file")
-	flagLogMask  = flag.String("log", "logs/cdp-%s.log", "log file mask")
-	flagEllipsis = flag.Bool("s", false, "shorten requests and responses")
-	flagOnce     = flag.Bool("once", false, "debug single session")
+	flagListen       = flag.String("l", "localhost:9223", "listen address")
+	flagRemote       = flag.String("r", "localhost:9222", "remote address")
+	flagNoLog        = flag.Bool("n", false, "disable logging to file")
+	flagLogMask      = flag.String("log", "logs/cdp-%s.log", "log file mask")
+	flagEllipsis     = flag.Bool("s", false, "shorten requests and responses")
+	flagOnce         = flag.Bool("once", false, "debug single session")
+	flagShowRequests = flag.Bool("i", false, "include request frames as they are sent")
 )
 
 var (
-	responseColor = color.New(color.FgHiGreen).SprintfFunc()
-	requestColor  = color.New(color.FgGreen).SprintfFunc()
-	eventsColor   = color.New(color.FgHiRed).SprintfFunc()
-	protocolColor = color.New(color.FgYellow).SprintfFunc()
-	protocolError = color.New(color.FgHiYellow, color.BgRed).SprintfFunc()
-	targetColor   = color.New(color.FgHiWhite).SprintfFunc()
-	methodColor   = color.New(color.FgHiYellow).SprintfFunc()
-	errorColor    = color.New(color.BgRed, color.FgWhite).SprintfFunc()
+	responseColor     = color.New(color.FgHiGreen).SprintfFunc()
+	requestColor      = color.New(color.FgHiBlue).SprintFunc()
+	requestReplyColor = color.New(color.FgGreen).SprintfFunc()
+	eventsColor       = color.New(color.FgHiRed).SprintfFunc()
+	protocolColor     = color.New(color.FgYellow).SprintfFunc()
+	protocolError     = color.New(color.FgHiYellow, color.BgRed).SprintfFunc()
+	targetColor       = color.New(color.FgHiWhite).SprintfFunc()
+	methodColor       = color.New(color.FgHiYellow).SprintfFunc()
+	errorColor        = color.New(color.BgRed, color.FgWhite).SprintfFunc()
 )
 
 const (
@@ -45,6 +48,7 @@ const (
 	outgoingBufferSize = 25 * 1024 * 1024
 	ellipsisLength     = 80
 	requestReplyFormat = "%s % 48s(%s) = %s"
+	requestFormat      = "%s % 48s(%s)"
 	eventFormat        = "%s % 48s(%s)"
 )
 
@@ -140,10 +144,11 @@ func main() {
 }
 
 func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
-	logger.Printf("Legend: %s, %s, %s, %s",
+	logger.Printf("Legend: %s, %s, %s, %s, %s",
 		protocolColor("protocol informations"),
 		eventsColor("received events"),
-		requestColor("sent requests"),
+		requestColor("sent request frames"),
+		requestReplyColor("requests params"),
 		responseColor("received responses."),
 	)
 
@@ -159,6 +164,11 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 
 					if protocolMessage, err := decodeMessage([]byte(asString(msg.Params["message"]))); err == nil {
 						targetRequests[protocolMessage.Id] = protocolMessage
+
+						if *flagShowRequests {
+							logger.Printf(requestFormat, targetColor("%s", msg.Params["targetId"]), methodColor(protocolMessage.Method), requestColor("%s", serialize(protocolMessage)))
+						}
+
 					} else {
 						logger.Printf(protocolColor("Could not deserialize message: %+v", err))
 					}
@@ -175,9 +185,9 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 								delete(targetRequests, protocolMessage.Id)
 
 								if protocolMessage.IsError() {
-									logger.Printf(requestReplyFormat, targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(protocolMessage.Error)))
+									logger.Printf(requestReplyFormat, targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestReplyColor(serialize(request.Params)), errorColor(serialize(protocolMessage.Error)))
 								} else {
-									logger.Printf(requestReplyFormat, targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestColor(serialize(request.Params)), responseColor(serialize(protocolMessage.Result)))
+									logger.Printf(requestReplyFormat, targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestReplyColor(serialize(request.Params)), responseColor(serialize(protocolMessage.Result)))
 								}
 							} else {
 								logger.Printf(protocolColor("Could not find target request with id: %d", protocolMessage.Id))
@@ -191,6 +201,10 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 			} else {
 				if msg.IsRequest() {
 					requests[msg.Id] = msg
+
+					if *flagShowRequests {
+						logger.Printf(requestFormat, targetColor(protocolTargetId), methodColor(msg.Method), requestColor(serialize(msg.Params)))
+					}
 				}
 
 				if msg.IsResponse() {
@@ -199,9 +213,9 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 
 						if request != nil {
 							if msg.IsError() {
-								logger.Printf(requestReplyFormat, targetColor(protocolTargetId), methodColor(request.Method), requestColor(serialize(request.Params)), errorColor(serialize(msg.Error)))
+								logger.Printf(requestReplyFormat, targetColor(protocolTargetId), methodColor(request.Method), requestReplyColor(serialize(request.Params)), errorColor(serialize(msg.Error)))
 							} else {
-								logger.Printf(requestReplyFormat, targetColor(protocolTargetId), methodColor(request.Method), requestColor(serialize(request.Params)), responseColor(serialize(msg.Result)))
+								logger.Printf(requestReplyFormat, targetColor(protocolTargetId), methodColor(request.Method), requestReplyColor(serialize(request.Params)), responseColor(serialize(msg.Result)))
 							}
 						}
 					} else {
@@ -250,7 +264,7 @@ func proxyWS(ctxt context.Context, stream chan *protocolMessage, in, out *websoc
 
 func checkVersion() (map[string]string, error) {
 	cl := &http.Client{}
-	req, err := http.NewRequest("GET", "http://" + *flagRemote+"/json/version", nil)
+	req, err := http.NewRequest("GET", "http://"+*flagRemote+"/json/version", nil)
 	if err != nil {
 		return nil, err
 	}
