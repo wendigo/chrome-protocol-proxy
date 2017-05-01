@@ -119,12 +119,12 @@ func createLogWriter(filename string) (io.Writer, error) {
 	dir := filepath.Dir(logFilePath)
 
 	if _, err := os.Stat(dir); err != nil {
-		if err := os.MkdirAll(dir, 0777); err != nil {
+		if err := os.MkdirAll(dir, 0666); err != nil {
 			return nil, err
 		}
 	}
 
-	writer, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0777)
+	writer, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, err
 	}

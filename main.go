@@ -40,10 +40,14 @@ func main() {
 	mux.Handle("/json", simpleReverseProxy)
 	mux.Handle("/", simpleReverseProxy)
 
-	logger, err := createLogger("connection")
+	rootLogger, err := createLogger("connection")
 	if err != nil {
 		panic(fmt.Sprintf("could not create logger: %s", err))
 	}
+
+	logger := rootLogger.WithFields(logrus.Fields{
+		fieldLevel:       levelConnection,
+	})
 
 	mux.HandleFunc("/devtools/page/", func(res http.ResponseWriter, req *http.Request) {
 
@@ -53,8 +57,7 @@ func main() {
 		var protocolLogger *logrus.Entry
 
 		if *flagDistributeLogs {
-			logger, err = createLogger("inspector-" + id)
-
+			logger, err := createLogger("inspector-" + id)
 			if err != nil {
 				panic(fmt.Sprintf("could not create logger: %s", err))
 			}
@@ -66,7 +69,6 @@ func main() {
 
 		} else {
 			protocolLogger = logger.WithFields(logrus.Fields{
-				fieldLevel:       levelConnection,
 				fieldInspectorId: id,
 			})
 		}
@@ -75,8 +77,8 @@ func main() {
 
 		endpoint := "ws://" + *flagRemote + "/devtools/page/" + id
 
-		protocolLogger.Infof("---------- connection from %s ----------", req.RemoteAddr)
-		protocolLogger.Infof("checking protocol versions on: %s", endpoint)
+		logger.Infof("---------- connection from %s ----------", req.RemoteAddr)
+		logger.Infof("checking protocol versions on: %s", endpoint)
 
 		ver, err := checkVersion()
 		if err != nil {
@@ -85,16 +87,16 @@ func main() {
 			return
 		}
 
-		protocolLogger.Infof("protocol version: %s", ver["Protocol-Version"])
-		protocolLogger.Infof("versions: Chrome(%s), V8(%s), Webkit(%s)", ver["Browser"], ver["V8-Version"], ver["WebKit-Version"])
-		protocolLogger.Infof("browser user agent: %s", ver["User-Agent"])
-		protocolLogger.Infof("connecting to %s... ", endpoint)
+		logger.Infof("protocol version: %s", ver["Protocol-Version"])
+		logger.Infof("versions: Chrome(%s), V8(%s), Webkit(%s)", ver["Browser"], ver["V8-Version"], ver["WebKit-Version"])
+		logger.Infof("browser user agent: %s", ver["User-Agent"])
+		logger.Infof("connecting to %s... ", endpoint)
 
 		// connecting to ws
 		out, pres, err := wsDialer.Dial(endpoint, nil)
 		if err != nil {
 			msg := fmt.Sprintf("could not connect to %s: %v", endpoint, err)
-			protocolLogger.Error(protocolError(msg))
+			logger.Error(protocolError(msg))
 			http.Error(res, msg, 500)
 			return
 		}
@@ -102,10 +104,10 @@ func main() {
 		defer out.Close()
 
 		// connect incoming websocket
-		protocolLogger.Infof("upgrading connection on %s...", req.RemoteAddr)
+		logger.Infof("upgrading connection on %s...", req.RemoteAddr)
 		in, err := wsUpgrader.Upgrade(res, req, nil)
 		if err != nil {
-			protocolLogger.Errorf("could not upgrade websocket from %s: %v", req.RemoteAddr, err)
+			logger.Errorf("could not upgrade websocket from %s: %v", req.RemoteAddr, err)
 			http.Error(res, "could not upgrade websocket connection", 500)
 			return
 		}
@@ -119,7 +121,7 @@ func main() {
 		go proxyWS(ctxt, stream, out, in, errc)
 
 		<-errc
-		protocolLogger.Infof("---------- closing %s ----------", req.RemoteAddr)
+		logger.Infof("---------- closing %s ----------", req.RemoteAddr)
 
 		if *flagOnce {
 			os.Exit(0)
