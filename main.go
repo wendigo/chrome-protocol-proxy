@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -17,99 +16,85 @@ import (
 
 	"errors"
 
-	"github.com/fatih/color"
-	"github.com/gorilla/websocket"
+	"github.com/Sirupsen/logrus"
 )
 
 var (
-	flagListen       = flag.String("l", "localhost:9223", "listen address")
-	flagRemote       = flag.String("r", "localhost:9222", "remote address")
-	flagNoLog        = flag.Bool("n", false, "disable logging to file")
-	flagLogMask      = flag.String("log", "logs/cdp-%s.log", "log file mask")
-	flagEllipsis     = flag.Bool("s", false, "shorten requests and responses")
-	flagOnce         = flag.Bool("once", false, "debug single session")
-	flagShowRequests = flag.Bool("i", false, "include request frames as they are sent")
+	flagListen         = flag.String("l", "localhost:9223", "listen address")
+	flagRemote         = flag.String("r", "localhost:9222", "remote address")
+	flagEllipsis       = flag.Bool("s", false, "shorten requests and responses")
+	flagOnce           = flag.Bool("once", false, "debug single session")
+	flagShowRequests   = flag.Bool("i", false, "include request frames as they are sent")
+	flagDistributeLogs = flag.Bool("d", false, "write logs file per targetId")
+	flagQuiet          = flag.Bool("q", false, "do not show logs on stdout")
 )
 
-var (
-	responseColor     = color.New(color.FgHiGreen).SprintfFunc()
-	requestColor      = color.New(color.FgHiBlue).SprintFunc()
-	requestReplyColor = color.New(color.FgGreen).SprintfFunc()
-	eventsColor       = color.New(color.FgHiRed).SprintfFunc()
-	protocolColor     = color.New(color.FgYellow).SprintfFunc()
-	protocolError     = color.New(color.FgHiYellow, color.BgRed).SprintfFunc()
-	targetColor       = color.New(color.FgHiWhite).SprintfFunc()
-	methodColor       = color.New(color.FgHiYellow).SprintfFunc()
-	errorColor        = color.New(color.BgRed, color.FgWhite).SprintfFunc()
-)
-
-const (
-	incomingBufferSize = 10 * 1024 * 1024
-	outgoingBufferSize = 25 * 1024 * 1024
-	ellipsisLength     = 80
-	requestReplyFormat = "%s % 48s(%s) = %s"
-	requestFormat      = "%s % 48s(%s)"
-	eventFormat        = "%s % 48s(%s)"
-)
-
-var protocolTargetId = center("protocol message", 36)
-
-var wsUpgrader = &websocket.Upgrader{
-	ReadBufferSize:  incomingBufferSize,
-	WriteBufferSize: outgoingBufferSize,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-var wsDialer = &websocket.Dialer{
-	ReadBufferSize:  outgoingBufferSize,
-	WriteBufferSize: incomingBufferSize,
-}
+var protocolTargetID = center("protocol message", 36)
 
 func main() {
 	flag.Parse()
-
 	mux := http.NewServeMux()
 
-	simplep := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: *flagRemote})
+	simpleReverseProxy := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: *flagRemote})
 
-	mux.Handle("/json", simplep)
-	mux.Handle("/", simplep)
+	mux.Handle("/json", simpleReverseProxy)
+	mux.Handle("/", simpleReverseProxy)
+
+	logger, err := createLogger("connection")
+	if err != nil {
+		panic(fmt.Sprintf("could not create logger: %s", err))
+	}
 
 	mux.HandleFunc("/devtools/page/", func(res http.ResponseWriter, req *http.Request) {
 
 		stream := make(chan *protocolMessage, 1024)
-
 		id := path.Base(req.URL.Path)
-		f, logger := createLog(id)
-		if f != nil {
-			defer f.Close()
+
+		var protocolLogger *logrus.Entry
+
+		if *flagDistributeLogs {
+			logger, err = createLogger("inspector-" + id)
+
+			if err != nil {
+				panic(fmt.Sprintf("could not create logger: %s", err))
+			}
+
+			protocolLogger = logger.WithFields(logrus.Fields{
+				fieldLevel:       levelConnection,
+				fieldInspectorId: id,
+			})
+
+		} else {
+			protocolLogger = logger.WithFields(logrus.Fields{
+				fieldLevel:       levelConnection,
+				fieldInspectorId: id,
+			})
 		}
-		go dumpStream(logger, stream)
+
+		go dumpStream(protocolLogger, stream)
 
 		endpoint := "ws://" + *flagRemote + "/devtools/page/" + id
 
-		logger.Print(protocolColor("---------- connection from %s ----------", req.RemoteAddr))
-		logger.Print(protocolColor("checking protocol versions on: %s", endpoint))
+		protocolLogger.Infof("---------- connection from %s ----------", req.RemoteAddr)
+		protocolLogger.Infof("checking protocol versions on: %s", endpoint)
 
 		ver, err := checkVersion()
 		if err != nil {
-			logger.Println(protocolError("could not check version: %v", err))
+			protocolLogger.Errorf("could not check version: %v", err)
 			http.Error(res, "could not check version", 500)
 			return
 		}
 
-		logger.Print(protocolColor("protocol version: %s", ver["Protocol-Version"]))
-		logger.Print(protocolColor("versions: Chrome(%s), V8(%s), Webkit(%s)", ver["Browser"], ver["V8-Version"], ver["WebKit-Version"]))
-		logger.Print(protocolColor("browser user agent: %s", ver["User-Agent"]))
+		protocolLogger.Infof("protocol version: %s", ver["Protocol-Version"])
+		protocolLogger.Infof("versions: Chrome(%s), V8(%s), Webkit(%s)", ver["Browser"], ver["V8-Version"], ver["WebKit-Version"])
+		protocolLogger.Infof("browser user agent: %s", ver["User-Agent"])
+		protocolLogger.Infof("connecting to %s... ", endpoint)
 
-		// connect outgoing websocket
-		logger.Print(protocolColor("connecting to %s... ", endpoint))
+		// connecting to ws
 		out, pres, err := wsDialer.Dial(endpoint, nil)
 		if err != nil {
 			msg := fmt.Sprintf("could not connect to %s: %v", endpoint, err)
-			logger.Println(protocolError(msg))
+			protocolLogger.Error(protocolError(msg))
 			http.Error(res, msg, 500)
 			return
 		}
@@ -117,10 +102,10 @@ func main() {
 		defer out.Close()
 
 		// connect incoming websocket
-		logger.Print(protocolColor("upgrading connection on %s...", req.RemoteAddr))
+		protocolLogger.Infof("upgrading connection on %s...", req.RemoteAddr)
 		in, err := wsUpgrader.Upgrade(res, req, nil)
 		if err != nil {
-			logger.Println(protocolError("could not upgrade websocket from %s: %v", req.RemoteAddr, err))
+			protocolLogger.Errorf("could not upgrade websocket from %s: %v", req.RemoteAddr, err)
 			http.Error(res, "could not upgrade websocket connection", 500)
 			return
 		}
@@ -132,8 +117,9 @@ func main() {
 		errc := make(chan error, 1)
 		go proxyWS(ctxt, stream, in, out, errc)
 		go proxyWS(ctxt, stream, out, in, errc)
+
 		<-errc
-		logger.Printf(protocolColor("---------- closing %s ----------", req.RemoteAddr))
+		protocolLogger.Infof("---------- closing %s ----------", req.RemoteAddr)
 
 		if *flagOnce {
 			os.Exit(0)
@@ -143,13 +129,13 @@ func main() {
 	log.Fatal(http.ListenAndServe(*flagListen, mux))
 }
 
-func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
-	logger.Printf("Legend: %s, %s, %s, %s, %s",
-		protocolColor("protocol informations"),
+func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
+	logger.Printf("Legend: %s, %s, %s, %s, %s, %s", protocolColor("protocol informations"),
 		eventsColor("received events"),
 		requestColor("sent request frames"),
 		requestReplyColor("requests params"),
-		responseColor("received responses."),
+		responseColor("received responses"),
+		errorColor("error response."),
 	)
 
 	requests := make(map[uint64]*protocolMessage)
@@ -159,6 +145,27 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 		select {
 		case msg := <-stream:
 			if msg.InTarget() {
+
+				var targetLogger *logrus.Entry
+
+				if *flagDistributeLogs {
+					logger, err := createLogger(fmt.Sprintf("target-%s", msg.Params["targetId"]))
+					if err != nil {
+						panic(fmt.Sprintf("could not create logger: %v", err))
+					}
+
+					targetLogger = logger.WithFields(logrus.Fields{
+						fieldLevel:    levelTarget,
+						fieldTargetId: msg.Params["targetId"],
+					})
+
+				} else {
+					targetLogger = logger.WithFields(logrus.Fields{
+						fieldLevel:    levelTarget,
+						fieldTargetId: msg.Params["targetId"],
+					})
+				}
+
 				if msg.IsRequest() {
 					requests[msg.Id] = nil
 
@@ -166,98 +173,117 @@ func dumpStream(logger *log.Logger, stream chan *protocolMessage) {
 						targetRequests[protocolMessage.Id] = protocolMessage
 
 						if *flagShowRequests {
-							logger.Printf(requestFormat, targetColor("%s", msg.Params["targetId"]), methodColor(protocolMessage.Method), requestColor("%s", serialize(protocolMessage)))
+							targetLogger.WithFields(logrus.Fields{
+								fieldType:   typeRequest,
+								fieldMethod: protocolMessage.Method,
+							}).Info(serialize(protocolMessage.Params))
 						}
 
 					} else {
-						logger.Printf(protocolColor("Could not deserialize message: %+v", err))
+						logger.WithFields(logrus.Fields{
+							fieldLevel: levelConnection,
+						}).Error("Could not deserialize message: %+v", err)
 					}
 				}
 
 				if msg.IsEvent() {
 					if protocolMessage, err := decodeMessage([]byte(asString(msg.Params["message"]))); err == nil {
 						if protocolMessage.IsEvent() {
-							logger.Printf(eventFormat, targetColor("%s", msg.Params["targetId"]), methodColor(protocolMessage.Method), eventsColor(serialize(protocolMessage.Params)))
+							targetLogger.WithFields(logrus.Fields{
+								fieldType:   typeEvent,
+								fieldMethod: protocolMessage.Method,
+							}).Info(serialize(protocolMessage.Params))
 						}
 
 						if protocolMessage.IsResponse() {
-							if request, ok := targetRequests[protocolMessage.Id]; ok {
-								delete(targetRequests, protocolMessage.Id)
+							var logMessage string
+							var logType int
+							var logRequest string
+							var logMethod string
 
-								if protocolMessage.IsError() {
-									logger.Printf(requestReplyFormat, targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestReplyColor(serialize(request.Params)), errorColor(serialize(protocolMessage.Error)))
-								} else {
-									logger.Printf(requestReplyFormat, targetColor("%s", msg.Params["targetId"]), methodColor(request.Method), requestReplyColor(serialize(request.Params)), responseColor(serialize(protocolMessage.Result)))
-								}
+							if protocolMessage.IsError() {
+								logMessage = serialize(protocolMessage.Error)
+								logType = typeRequestResponseError
 							} else {
-								logger.Printf(protocolColor("Could not find target request with id: %d", protocolMessage.Id))
+								logMessage = serialize(protocolMessage.Result)
+								logType = typeRequestResponse
 							}
+
+							if request, ok := targetRequests[protocolMessage.Id]; ok && request != nil {
+								delete(targetRequests, protocolMessage.Id)
+								logRequest = serialize(request.Params)
+								logMethod = request.Method
+
+							} else {
+								logRequest = errorColor("could not find request with id: %d", protocolMessage.Id)
+							}
+
+							targetLogger.WithFields(logrus.Fields{
+								fieldType:    logType,
+								fieldMethod:  logMethod,
+								fieldRequest: logRequest,
+							}).Info(logMessage)
 						}
 					} else {
-						logger.Printf(protocolColor("Could not deserialize message: %+v", err))
+						logger.WithFields(logrus.Fields{
+							fieldLevel: levelConnection,
+						}).Error("Could not deserialize message: %+v", err)
 					}
 				}
 
 			} else {
+				protocolLogger := logger.WithFields(logrus.Fields{
+					fieldLevel:    levelProtocol,
+					fieldTargetId: protocolTargetID,
+				})
+
 				if msg.IsRequest() {
 					requests[msg.Id] = msg
 
 					if *flagShowRequests {
-						logger.Printf(requestFormat, targetColor(protocolTargetId), methodColor(msg.Method), requestColor(serialize(msg.Params)))
+						protocolLogger.WithFields(logrus.Fields{
+							fieldType:   typeRequest,
+							fieldMethod: msg.Method,
+						}).Info(serialize(msg.Params))
 					}
 				}
 
 				if msg.IsResponse() {
-					if request, ok := requests[msg.Id]; ok {
+
+					var logMessage string
+					var logType int
+					var logRequest string
+					var logMethod string
+
+					if msg.IsError() {
+						logMessage = serialize(msg.Error)
+						logType = typeRequestResponseError
+					} else {
+						logMessage = serialize(msg.Result)
+						logType = typeRequestResponse
+					}
+
+					if request, ok := requests[msg.Id]; ok && request != nil {
+						logRequest = serialize(request.Params)
+						logMethod = request.Method
+
 						delete(requests, msg.Id)
 
-						if request != nil {
-							if msg.IsError() {
-								logger.Printf(requestReplyFormat, targetColor(protocolTargetId), methodColor(request.Method), requestReplyColor(serialize(request.Params)), errorColor(serialize(msg.Error)))
-							} else {
-								logger.Printf(requestReplyFormat, targetColor(protocolTargetId), methodColor(request.Method), requestReplyColor(serialize(request.Params)), responseColor(serialize(msg.Result)))
-							}
-						}
-					} else {
-						logger.Printf(protocolColor("Could not find request with id: %d", msg.Id))
+						protocolLogger.WithFields(logrus.Fields{
+							fieldType:    logType,
+							fieldMethod:  logMethod,
+							fieldRequest: logRequest,
+						}).Info(logMessage)
 					}
 				}
 
 				if msg.IsEvent() {
-					logger.Printf(eventFormat, targetColor(protocolTargetId), methodColor(msg.Method), eventsColor(serialize(msg.Params)))
+					protocolLogger.WithFields(logrus.Fields{
+						fieldType:   typeEvent,
+						fieldMethod: msg.Method,
+					}).Info(serialize(msg.Params))
 				}
 			}
-		}
-	}
-}
-
-func proxyWS(ctxt context.Context, stream chan *protocolMessage, in, out *websocket.Conn, errc chan error) {
-	var mt int
-	var buf []byte
-	var err error
-
-	for {
-		select {
-		default:
-			mt, buf, err = in.ReadMessage()
-			if err != nil {
-				errc <- err
-				return
-			}
-
-			if msg, err := decodeMessage(buf); err == nil {
-				stream <- msg
-			}
-
-			err = out.WriteMessage(mt, buf)
-
-			if err != nil {
-				errc <- err
-				return
-			}
-
-		case <-ctxt.Done():
-			return
 		}
 	}
 }
@@ -282,19 +308,4 @@ func checkVersion() (map[string]string, error) {
 	}
 
 	return v, nil
-}
-
-func createLog(id string) (io.Closer, *log.Logger) {
-	var f io.Closer
-	var w io.Writer = os.Stdout
-	if !*flagNoLog && *flagLogMask != "" {
-		l, err := os.OpenFile(fmt.Sprintf(*flagLogMask, id), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		f = l
-		w = io.MultiWriter(os.Stdout, l)
-	}
-	return f, log.New(w, "", log.Lmicroseconds)
 }

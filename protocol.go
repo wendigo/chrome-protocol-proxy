@@ -3,20 +3,20 @@ package main
 import "fmt"
 
 type protocolMessage struct {
-	Id uint64 `json:"id"`
+	Id     uint64                 `json:"id"`
 	Result map[string]interface{} `json:"result"`
-	Error struct {
-		Code int64 `json:"code"`
+	Error  struct {
+		Code    int64  `json:"code"`
 		Message string `json:"message"`
-		Data string `json:"data"`
+		Data    string `json:"data"`
 	} `json:"error"`
-	Method string `json:"method"`
+	Method string                 `json:"method"`
 	Params map[string]interface{} `json:"params"`
 }
 
 type targetedProtocolMessage struct {
 	TargetId string `json:"targetId"`
-	Message string `json:"message"`
+	Message  string `json:"message"`
 }
 
 func (t *targetedProtocolMessage) ProtocolMessage() (*protocolMessage, error) {

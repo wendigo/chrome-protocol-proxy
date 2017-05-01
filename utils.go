@@ -1,9 +1,13 @@
 package main
 
 import (
-	"strings"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"strings"
+)
+
+const (
+	ellipsisLength = 80
 )
 
 func center(message string, length int) string {
@@ -12,7 +16,7 @@ func center(message string, length int) string {
 	if padding < 0 {
 		return message
 	} else {
-		return strings.Repeat(" ", padding) + message + strings.Repeat(" ", length - len(message) - padding)
+		return strings.Repeat(" ", padding) + message + strings.Repeat(" ", length-len(message)-padding)
 	}
 
 }
