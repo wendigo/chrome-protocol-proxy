@@ -46,7 +46,7 @@ func main() {
 	}
 
 	logger := rootLogger.WithFields(logrus.Fields{
-		fieldLevel:       levelConnection,
+		fieldLevel: levelConnection,
 	})
 
 	mux.HandleFunc("/devtools/page/", func(res http.ResponseWriter, req *http.Request) {
