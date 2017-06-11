@@ -15,14 +15,17 @@
 
 ## configuration options
 ```
- Usage of chrome-protocol-proxy:
+ Usage of ./chrome-protocol-proxy:
+  -d	write logs file per targetId
+  -delta
+    	show delta time between log entries
+  -i	include request frames as they are sent
   -l string
     	listen address (default "localhost:9223")
-  -log string
-    	log file mask (default "logs/cdp-%s.log")
-  -n	disable logging to file
+  -m	display time in microseconds
   -once
     	debug single session
+  -q	do not show logs on stdout
   -r string
     	remote address (default "localhost:9222")
   -s	shorten requests and responses
