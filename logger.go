@@ -6,8 +6,10 @@ import (
 	"github.com/fatih/color"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const (
@@ -55,11 +57,32 @@ var (
 )
 
 type FramesFormatter struct {
+	lastTime int64
 }
 
-func (f FramesFormatter) Format(e *logrus.Entry) ([]byte, error) {
+func (f *FramesFormatter) Format(e *logrus.Entry) ([]byte, error) {
 	message := e.Message
-	timestamp := e.Time.Format(timeFormat)
+	var timestamp string
+
+	if *flagMicroseconds {
+		timestamp = fmt.Sprintf("%d", e.Time.UnixNano()/int64(time.Millisecond))
+	} else {
+		timestamp = e.Time.Format(timeFormat)
+	}
+
+	if *flagDelta {
+		var delta string
+
+		if f.lastTime == 0 {
+			delta = fmt.Sprintf("Δ%8.2fms", 0.00)
+		} else {
+			delta = fmt.Sprintf("Δ%8.2fms", math.Abs(float64(e.Time.UnixNano()-f.lastTime)/float64(time.Millisecond)))
+		}
+
+		f.lastTime = e.Time.UnixNano()
+
+		timestamp = fmt.Sprintf("%s %s", timestamp, delta)
+	}
 
 	var protocolType int = -1
 	var protocolMethod string = ""

@@ -27,6 +27,8 @@ var (
 	flagShowRequests   = flag.Bool("i", false, "include request frames as they are sent")
 	flagDistributeLogs = flag.Bool("d", false, "write logs file per targetId")
 	flagQuiet          = flag.Bool("q", false, "do not show logs on stdout")
+	flagMicroseconds   = flag.Bool("m", false, "display time in microseconds")
+	flagDelta          = flag.Bool("delta", false, "show delta time between log entries")
 )
 
 var protocolTargetID = center("protocol message", 36)
