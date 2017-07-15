@@ -8,7 +8,9 @@
 - colored output 🖖
 - request-response coalescing,
 - interprets [Target.sendMessageToTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#method-sendMessageToTarget) requests,
-- interprets [Target.receivedMessageFromTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#event-receivedMessageFromTarget) responses and events.
+- interprets [Target.receivedMessageFromTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#event-receivedMessageFromTarget) responses and events,
+- calculates and displays delta between frames,
+- writes logs and splits them based on connection id / target id.
 
 ## usage
 ```go get -u github.com/wendigo/chrome-protocol-proxy```
