@@ -8,7 +8,7 @@
 - colored output 🖖
 - request-response coalescing,
 - interprets [Target.sendMessageToTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#method-sendMessageToTarget) requests,
-- interprets [Target.receivedMessageFromTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#event-receivedMessageFromTarget) responses and events with both targetId and newly introduced [sessionId](https://chromium.googlesource.com/chromium/src/+/237f82767da3bbdcd8d6ad3fa4449ef6a3fe8bd3)
+- interprets [Target.receivedMessageFromTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#event-receivedMessageFromTarget) responses and events with both targetId and newly introduced [sessionId](https://chromium.googlesource.com/chromium/src/+/237f82767da3bbdcd8d6ad3fa4449ef6a3fe8bd3),
 - calculates and displays delta between frames,
 - writes logs and splits them based on connection id and target/session id.
 
