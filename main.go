@@ -153,20 +153,20 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 				var targetLogger *logrus.Entry
 
 				if *flagDistributeLogs {
-					logger, err := createLogger(fmt.Sprintf("target-%s", msg.Params["targetId"]))
+					logger, err := createLogger(fmt.Sprintf("target-%s", msg.TargetId()))
 					if err != nil {
 						panic(fmt.Sprintf("could not create logger: %v", err))
 					}
 
 					targetLogger = logger.WithFields(logrus.Fields{
 						fieldLevel:    levelTarget,
-						fieldTargetId: msg.Params["targetId"],
+						fieldTargetId: msg.TargetId(),
 					})
 
 				} else {
 					targetLogger = logger.WithFields(logrus.Fields{
 						fieldLevel:    levelTarget,
-						fieldTargetId: msg.Params["targetId"],
+						fieldTargetId: msg.TargetId(),
 					})
 				}
 

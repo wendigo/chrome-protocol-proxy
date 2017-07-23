@@ -29,6 +29,7 @@ const (
 	fieldLevel       = "level"
 	fieldType        = "type"
 	fieldTargetId    = "targetId"
+	fieldSessionId   = "sessionId"
 	fieldRequest     = "request"
 	fieldMethod      = "method"
 	fieldInspectorId = "inspectorId"

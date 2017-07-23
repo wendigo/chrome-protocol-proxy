@@ -16,6 +16,7 @@ type protocolMessage struct {
 
 type targetedProtocolMessage struct {
 	TargetId string `json:"targetId"`
+	SessionId string `json:"sessionId"`
 	Message  string `json:"message"`
 }
 
@@ -52,4 +53,18 @@ func (p *protocolMessage) IsEvent() bool {
 
 func (p *protocolMessage) InTarget() bool {
 	return p.Method == "Target.sendMessageToTarget" || p.Method == "Target.receivedMessageFromTarget"
+}
+
+func (p *protocolMessage) TargetId() string {
+	if (p.InTarget()) {
+		if val, ok := p.Params["sessionId"]; ok {
+			return val.(string)
+		}
+
+		if val, ok := p.Params["targetId"]; ok {
+			return val.(string)
+		}
+	}
+
+	return ""
 }
