@@ -11,7 +11,7 @@ script:
 deploy:
   skip_cleanup: true
   provider: script
-  script: deploy.sh
+  script: test -n "$TRAVIS_TAG" && curl -sL https://git.io/goreleaser | bash
   on:
     tags: true
     all_branches: true
