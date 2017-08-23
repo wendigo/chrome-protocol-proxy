@@ -85,7 +85,7 @@ func main() {
 		logger.Infof("checking protocol versions on: %s", endpoint)
 
 		ver, err := checkVersion()
-		if err != nil {			
+		if err != nil {
 			protocolLogger.Errorf("could not check version: %v", err)
 			http.Error(res, "could not check version", 500)
 			return

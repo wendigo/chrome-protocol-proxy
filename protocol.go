@@ -15,9 +15,9 @@ type protocolMessage struct {
 }
 
 type targetedProtocolMessage struct {
-	TargetId string `json:"targetId"`
+	TargetId  string `json:"targetId"`
 	SessionId string `json:"sessionId"`
-	Message  string `json:"message"`
+	Message   string `json:"message"`
 }
 
 func (t *targetedProtocolMessage) ProtocolMessage() (*protocolMessage, error) {
@@ -56,7 +56,7 @@ func (p *protocolMessage) InTarget() bool {
 }
 
 func (p *protocolMessage) TargetId() string {
-	if (p.InTarget()) {
+	if p.InTarget() {
 		if val, ok := p.Params["sessionId"]; ok {
 			return val.(string)
 		}

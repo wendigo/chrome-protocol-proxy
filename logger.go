@@ -136,7 +136,7 @@ func createLogWriter(filename string) (io.Writer, error) {
 		return os.Stdout, nil
 	}
 
-	logFilePath := fmt.Sprintf(*flagDirLogs + "/%s.log", filename)
+	logFilePath := fmt.Sprintf(*flagDirLogs+"/%s.log", filename)
 
 	dir := filepath.Dir(logFilePath)
 
