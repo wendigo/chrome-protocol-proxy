@@ -43,8 +43,6 @@ const (
 	timeFormat         = "15:04:05.00000000"
 )
 
-const logsDir = "logs/%s.log"
-
 var (
 	responseColor     = color.New(color.FgHiGreen).SprintfFunc()
 	requestColor      = color.New(color.FgHiBlue).SprintFunc()
@@ -138,17 +136,17 @@ func createLogWriter(filename string) (io.Writer, error) {
 		return os.Stdout, nil
 	}
 
-	logFilePath := fmt.Sprintf(logsDir, filename)
+	logFilePath := fmt.Sprintf(*flagDirLogs + "/%s.log", filename)
 
 	dir := filepath.Dir(logFilePath)
 
 	if _, err := os.Stat(dir); err != nil {
-		if err := os.MkdirAll(dir, 0666); err != nil {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 			return nil, err
 		}
 	}
 
-	writer, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	writer, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
