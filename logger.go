@@ -126,6 +126,28 @@ func (f *FramesFormatter) Format(e *logrus.Entry) ([]byte, error) {
 	return []byte(fmt.Sprintf("unsupported entry: %+v", e)), nil
 }
 
+type multiWriter struct {
+	io.Writer
+	writers []io.Writer
+}
+
+func newMultiWriter(writers ...io.Writer) *multiWriter {
+	return &multiWriter{
+		Writer:  io.MultiWriter(writers...),
+		writers: writers,
+	}
+}
+
+func (m *multiWriter) Close() (err error) {
+	for _, writer := range m.writers {
+		if v, ok := writer.(io.Closer); ok {
+			v.Close()
+		}
+	}
+
+	return nil
+}
+
 func createLogWriter(filename string) (io.Writer, error) {
 
 	if filename == "" {
@@ -146,16 +168,16 @@ func createLogWriter(filename string) (io.Writer, error) {
 		}
 	}
 
-	writer, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
+	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, os.ModePerm)
 	if err != nil {
 		return nil, err
 	}
 
 	if *flagQuiet {
-		return writer, nil
+		return newMultiWriter(logFile), nil
 	}
 
-	return io.MultiWriter(writer, os.Stdout), nil
+	return newMultiWriter(logFile, os.Stdout), nil
 }
 
 func createLogger(filename string) (*logrus.Logger, error) {

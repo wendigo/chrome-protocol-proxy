@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -126,6 +127,12 @@ func main() {
 
 		<-errc
 		logger.Infof("---------- closing %s ----------", req.RemoteAddr)
+
+		if *flagDistributeLogs {
+			if closer, ok := protocolLogger.Logger.Out.(io.Closer); ok {
+				closer.Close()
+			}
+		}
 
 		if *flagOnce {
 			os.Exit(0)
