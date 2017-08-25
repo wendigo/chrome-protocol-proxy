@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 type protocolMessage struct {
-	Id     uint64                 `json:"id"`
+	ID     uint64                 `json:"id"`
 	Result map[string]interface{} `json:"result"`
 	Error  struct {
 		Code    int64  `json:"code"`
@@ -15,8 +15,8 @@ type protocolMessage struct {
 }
 
 type targetedProtocolMessage struct {
-	TargetId  string `json:"targetId"`
-	SessionId string `json:"sessionId"`
+	TargetID  string `json:"targetId"`
+	SessionID string `json:"sessionId"`
 	Message   string `json:"message"`
 }
 
@@ -27,7 +27,7 @@ func (t *targetedProtocolMessage) ProtocolMessage() (*protocolMessage, error) {
 func (p *protocolMessage) String() string {
 	return fmt.Sprintf(
 		"protocolMessage{id=%d, method=%s, result=%+v, error=%+v, params=%+v}",
-		p.Id,
+		p.ID,
 		p.Method,
 		p.Result,
 		p.Error,
@@ -40,11 +40,11 @@ func (p *protocolMessage) IsError() bool {
 }
 
 func (p *protocolMessage) IsResponse() bool {
-	return p.Method == "" && p.Id > 0
+	return p.Method == "" && p.ID > 0
 }
 
 func (p *protocolMessage) IsRequest() bool {
-	return p.Method != "" && p.Id > 0
+	return p.Method != "" && p.ID > 0
 }
 
 func (p *protocolMessage) IsEvent() bool {
@@ -55,7 +55,7 @@ func (p *protocolMessage) InTarget() bool {
 	return p.Method == "Target.sendMessageToTarget" || p.Method == "Target.receivedMessageFromTarget"
 }
 
-func (p *protocolMessage) TargetId() string {
+func (p *protocolMessage) TargetID() string {
 	if p.InTarget() {
 		if val, ok := p.Params["sessionId"]; ok {
 			return val.(string)

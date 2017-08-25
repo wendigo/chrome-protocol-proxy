@@ -15,10 +15,9 @@ func center(message string, length int) string {
 
 	if padding < 0 {
 		return message
-	} else {
-		return strings.Repeat(" ", padding) + message + strings.Repeat(" ", length-len(message)-padding)
 	}
 
+	return strings.Repeat(" ", padding) + message + strings.Repeat(" ", length-len(message)-padding)
 }
 
 func asString(value interface{}) string {
@@ -31,7 +30,8 @@ func asString(value interface{}) string {
 
 func serialize(value interface{}) string {
 
-	if buff, err := json.Marshal(value); err == nil {
+	buff, err := json.Marshal(value)
+	if err == nil {
 		if *flagEllipsis && len(buff) > ellipsisLength {
 			return string(buff[:ellipsisLength]) + "..."
 		}
@@ -43,9 +43,9 @@ func serialize(value interface{}) string {
 		}
 
 		return serialized
-	} else {
-		return err.Error()
 	}
+
+	return err.Error()
 }
 
 func decodeMessage(bytes []byte) (*protocolMessage, error) {

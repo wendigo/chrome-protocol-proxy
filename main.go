@@ -20,21 +20,6 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-var (
-	flagListen         = flag.String("l", "localhost:9223", "listen address")
-	flagRemote         = flag.String("r", "localhost:9222", "remote address")
-	flagEllipsis       = flag.Bool("s", false, "shorten requests and responses")
-	flagOnce           = flag.Bool("once", false, "debug single session")
-	flagShowRequests   = flag.Bool("i", false, "include request frames as they are sent")
-	flagDistributeLogs = flag.Bool("d", false, "write logs file per targetId")
-	flagQuiet          = flag.Bool("q", false, "do not show logs on stdout")
-	flagMicroseconds   = flag.Bool("m", false, "display time in microseconds")
-	flagDelta          = flag.Bool("delta", false, "show delta time between log entries")
-	flagDirLogs        = flag.String("log-dir", "logs", "logs directory")
-)
-
-var protocolTargetID = center("protocol message", 36)
-
 func main() {
 	flag.Parse()
 
@@ -69,12 +54,12 @@ func main() {
 
 			protocolLogger = logger.WithFields(logrus.Fields{
 				fieldLevel:       levelConnection,
-				fieldInspectorId: id,
+				fieldInspectorID: id,
 			})
 
 		} else {
 			protocolLogger = logger.WithFields(logrus.Fields{
-				fieldInspectorId: id,
+				fieldInspectorID: id,
 			})
 		}
 
@@ -162,28 +147,28 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 				var targetLogger *logrus.Entry
 
 				if *flagDistributeLogs {
-					logger, err := createLogger(fmt.Sprintf("target-%s", msg.TargetId()))
+					logger, err := createLogger(fmt.Sprintf("target-%s", msg.TargetID()))
 					if err != nil {
 						panic(fmt.Sprintf("could not create logger: %v", err))
 					}
 
 					targetLogger = logger.WithFields(logrus.Fields{
 						fieldLevel:    levelTarget,
-						fieldTargetId: msg.TargetId(),
+						fieldTargetID: msg.TargetID(),
 					})
 
 				} else {
 					targetLogger = logger.WithFields(logrus.Fields{
 						fieldLevel:    levelTarget,
-						fieldTargetId: msg.TargetId(),
+						fieldTargetID: msg.TargetID(),
 					})
 				}
 
 				if msg.IsRequest() {
-					requests[msg.Id] = nil
+					requests[msg.ID] = nil
 
 					if protocolMessage, err := decodeMessage([]byte(asString(msg.Params["message"]))); err == nil {
-						targetRequests[protocolMessage.Id] = protocolMessage
+						targetRequests[protocolMessage.ID] = protocolMessage
 
 						if *flagShowRequests {
 							targetLogger.WithFields(logrus.Fields{
@@ -195,7 +180,7 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 					} else {
 						logger.WithFields(logrus.Fields{
 							fieldLevel: levelConnection,
-						}).Error("Could not deserialize message: %+v", err)
+						}).Errorf("Could not deserialize message: %+v", err)
 					}
 				}
 
@@ -222,13 +207,13 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 								logType = typeRequestResponse
 							}
 
-							if request, ok := targetRequests[protocolMessage.Id]; ok && request != nil {
-								delete(targetRequests, protocolMessage.Id)
+							if request, ok := targetRequests[protocolMessage.ID]; ok && request != nil {
+								delete(targetRequests, protocolMessage.ID)
 								logRequest = serialize(request.Params)
 								logMethod = request.Method
 
 							} else {
-								logRequest = errorColor("could not find request with id: %d", protocolMessage.Id)
+								logRequest = errorColor("could not find request with id: %d", protocolMessage.ID)
 							}
 
 							targetLogger.WithFields(logrus.Fields{
@@ -240,18 +225,18 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 					} else {
 						logger.WithFields(logrus.Fields{
 							fieldLevel: levelConnection,
-						}).Error("Could not deserialize message: %+v", err)
+						}).Errorf("Could not deserialize message: %+v", err)
 					}
 				}
 
 			} else {
 				protocolLogger := logger.WithFields(logrus.Fields{
 					fieldLevel:    levelProtocol,
-					fieldTargetId: protocolTargetID,
+					fieldTargetID: protocolTargetID,
 				})
 
 				if msg.IsRequest() {
-					requests[msg.Id] = msg
+					requests[msg.ID] = msg
 
 					if *flagShowRequests {
 						protocolLogger.WithFields(logrus.Fields{
@@ -276,11 +261,11 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 						logType = typeRequestResponse
 					}
 
-					if request, ok := requests[msg.Id]; ok && request != nil {
+					if request, ok := requests[msg.ID]; ok && request != nil {
 						logRequest = serialize(request.Params)
 						logMethod = request.Method
 
-						delete(requests, msg.Id)
+						delete(requests, msg.ID)
 
 						protocolLogger.WithFields(logrus.Fields{
 							fieldType:    logType,
