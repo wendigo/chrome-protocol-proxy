@@ -82,7 +82,6 @@ func (f *FramesFormatter) Format(e *logrus.Entry) ([]byte, error) {
 		}
 
 		f.lastTime = e.Time.UnixNano()
-
 		timestamp = fmt.Sprintf("%s %s", timestamp, delta)
 	}
 
@@ -97,6 +96,10 @@ func (f *FramesFormatter) Format(e *logrus.Entry) ([]byte, error) {
 
 	if val, ok := e.Data[fieldMethod].(string); ok {
 		protocolMethod = val
+	}
+
+	if !accept(protocolMethod, message) {
+		return []byte{}, nil
 	}
 
 	switch protocolLevel {
@@ -143,13 +146,15 @@ func newMultiWriter(writers ...io.Writer) *multiWriter {
 
 func (m *multiWriter) Close() (err error) {
 	for _, writer := range m.writers {
-		if v, ok := writer.(io.Closer); ok {
+		if v, ok := writer.(io.Closer); ok && v != os.Stdout {
 			v.Close()
 		}
 	}
 
 	return nil
 }
+
+var loggers = make(map[string]*logrus.Logger)
 
 func createLogWriter(filename string) (io.Writer, error) {
 
@@ -162,7 +167,6 @@ func createLogWriter(filename string) (io.Writer, error) {
 	}
 
 	logFilePath := fmt.Sprintf(*flagDirLogs+"/%s.log", filename)
-
 	dir := filepath.Dir(logFilePath)
 
 	if _, err := os.Stat(dir); err != nil {
@@ -185,15 +189,19 @@ func createLogWriter(filename string) (io.Writer, error) {
 
 func createLogger(filename string) (*logrus.Logger, error) {
 
-	writer, err := createLogWriter(filename)
-	if err != nil {
-		return nil, err
+	if _, exists := loggers[filename]; !exists {
+		writer, err := createLogWriter(filename)
+		if err != nil {
+			return nil, err
+		}
+
+		loggers[filename] = &logrus.Logger{
+			Out:       writer,
+			Formatter: new(FramesFormatter),
+			Hooks:     make(logrus.LevelHooks),
+			Level:     logrus.DebugLevel,
+		}
 	}
 
-	return &logrus.Logger{
-		Out:       writer,
-		Formatter: new(FramesFormatter),
-		Hooks:     make(logrus.LevelHooks),
-		Level:     logrus.DebugLevel,
-	}, nil
+	return loggers[filename], nil
 }
