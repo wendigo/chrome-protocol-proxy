@@ -38,6 +38,10 @@ func accept(values ...string) bool {
 		}
 	}
 
+	if len(filterInclude.values) == 0 {
+		return true
+	}
+
 	for _, include := range filterInclude.values {
 		if strings.Contains(value, include) {
 			return true
