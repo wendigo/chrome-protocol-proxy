@@ -9,7 +9,8 @@
 - protocol frames filtering,🖖
 - request-response coalescing,
 - interprets [Target.sendMessageToTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#method-sendMessageToTarget) requests,
-- interprets [Target.receivedMessageFromTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#event-receivedMessageFromTarget) responses and events with both targetId and newly introduced [sessionId](https://chromium.googlesource.com/chromium/src/+/237f82767da3bbdcd8d6ad3fa4449ef6a3fe8bd3),
+- interprets [Target.receivedMessageFromTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#event-receivedMessageFromTarget) responses and events with [sessionId](https://chromium.googlesource.com/chromium/src/+/237f82767da3bbdcd8d6ad3fa4449ef6a3fe8bd3),
+- understands flatted sessions ([crbug.com/991325](crbug.com/991325))
 - calculates and displays time delta between consecutive frames,
 - writes logs and splits them based on connection id and target/session id.
 
@@ -19,7 +20,7 @@
 ## configuration options
 ```
  Usage of chrome-protocol-proxy:
-  -d	write logs file per targetId
+  -d	write logs file per session id
   -delta
     	show delta time between log entries
   -exclude value
@@ -33,7 +34,7 @@
     	logs directory (default "logs")
   -m	display time in microseconds
   -once
-    	debug single session
+    	debug single connection
   -q	do not show logs on stdout
   -r string
     	remote address (default "localhost:9222")
