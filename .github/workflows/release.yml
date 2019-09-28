@@ -10,8 +10,6 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@master
-      - name: go get
-        run: go get -u -v ./...
       - name: goreleaser
         uses: docker://goreleaser/goreleaser
         env:
