@@ -10,25 +10,17 @@ type protocolMessage struct {
 		Message string `json:"message"`
 		Data    string `json:"data"`
 	} `json:"error"`
-	Method string                 `json:"method"`
-	Params map[string]interface{} `json:"params"`
-}
-
-type targetedProtocolMessage struct {
-	TargetID  string `json:"targetId"`
-	SessionID string `json:"sessionId"`
-	Message   string `json:"message"`
-}
-
-func (t *targetedProtocolMessage) ProtocolMessage() (*protocolMessage, error) {
-	return decodeMessage([]byte(t.Message))
+	Method    string                 `json:"method"`
+	Params    map[string]interface{} `json:"params"`
+	SessionId string                 `json:"sessionId"`
 }
 
 func (p *protocolMessage) String() string {
 	return fmt.Sprintf(
-		"protocolMessage{id=%d, method=%s, result=%+v, error=%+v, params=%+v}",
+		"protocolMessage{id=%d, method=%s, sessionId=%s, result=%+v, error=%+v, params=%+v}",
 		p.ID,
 		p.Method,
+		p.SessionId,
 		p.Result,
 		p.Error,
 		p.Params,
@@ -51,17 +43,25 @@ func (p *protocolMessage) IsEvent() bool {
 	return !(p.IsRequest() || p.IsResponse())
 }
 
-func (p *protocolMessage) InTarget() bool {
+func (p *protocolMessage) FromTargetDomain() bool {
 	return p.Method == "Target.sendMessageToTarget" || p.Method == "Target.receivedMessageFromTarget"
 }
 
-func (p *protocolMessage) TargetID() string {
-	if p.InTarget() {
-		if val, ok := p.Params["sessionId"]; ok {
-			return val.(string)
-		}
+func (p *protocolMessage) HasSessionId() bool {
+	return p.FromTargetDomain() || p.IsFlatten()
+}
 
-		if val, ok := p.Params["targetId"]; ok {
+func (p *protocolMessage) IsFlatten() bool {
+	return p.SessionId != ""
+}
+
+func (p *protocolMessage) TargetID() string {
+	if p.SessionId != "" {
+		return p.SessionId
+	}
+
+	if p.FromTargetDomain() {
+		if val, ok := p.Params["sessionId"]; ok {
 			return val.(string)
 		}
 	}

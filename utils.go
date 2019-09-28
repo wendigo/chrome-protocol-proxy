@@ -52,8 +52,21 @@ func decodeMessage(bytes []byte) (*protocolMessage, error) {
 	var msg protocolMessage
 
 	if err := json.Unmarshal(bytes, &msg); err != nil {
+
 		return nil, err
 	}
 
 	return &msg, nil
+}
+
+func decodeProtocolMessage(message *protocolMessage) (*protocolMessage, error) {
+	if message.IsFlatten() {
+		return message, nil
+	}
+
+	if message.FromTargetDomain() {
+		return decodeMessage([]byte(asString(message.Params["message"])))
+	}
+
+	return message, nil
 }

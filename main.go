@@ -147,12 +147,11 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 	for {
 		select {
 		case msg := <-stream:
-			if msg.InTarget() {
-
+			if msg.HasSessionId() {
 				var targetLogger *logrus.Entry
 
 				if *flagDistributeLogs {
-					logger, err := createLogger(fmt.Sprintf("target-%s", msg.TargetID()))
+					logger, err := createLogger(fmt.Sprintf("session-%s", msg.TargetID()))
 					if err != nil {
 						panic(fmt.Sprintf("could not create logger: %v", err))
 					}
@@ -172,7 +171,7 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 				if msg.IsRequest() {
 					requests[msg.ID] = nil
 
-					if protocolMessage, err := decodeMessage([]byte(asString(msg.Params["message"]))); err == nil {
+					if protocolMessage, err := decodeProtocolMessage(msg); err == nil {
 						targetRequests[protocolMessage.ID] = protocolMessage
 
 						if *flagShowRequests {
@@ -190,7 +189,7 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 				}
 
 				if msg.IsEvent() {
-					if protocolMessage, err := decodeMessage([]byte(asString(msg.Params["message"]))); err == nil {
+					if protocolMessage, err := decodeProtocolMessage(msg); err == nil {
 						if protocolMessage.IsEvent() {
 							targetLogger.WithFields(logrus.Fields{
 								fieldType:   typeEvent,

@@ -30,17 +30,16 @@ const (
 	fieldLevel       = "level"
 	fieldType        = "type"
 	fieldTargetID    = "targetID"
-	fieldSessionID   = "sessionID"
 	fieldRequest     = "request"
 	fieldMethod      = "method"
 	fieldInspectorID = "inspectorId"
 )
 
 const (
-	requestReplyFormat = "%-17s %s % 48s(%s) = %s\n"
-	requestFormat      = "%-17s %s % 48s(%s)\n"
-	eventFormat        = "%-17s %s % 48s(%s)\n"
-	protocolFormat     = "%-17s %s\n"
+	requestReplyFormat = "%-17s %-32s % 48s(%s) = %s\n"
+	requestFormat      = "%-17s %-32s % 48s(%s)\n"
+	eventFormat        = "%-17s %-32s % 48s(%s)\n"
+	protocolFormat     = "%-17s %-32s\n"
 	timeFormat         = "15:04:05.00000000"
 	deltaFormat        = "Δ%8.2fms"
 )
@@ -55,7 +54,7 @@ var (
 	targetColor       = color.New(color.FgHiWhite).SprintfFunc()
 	methodColor       = color.New(color.FgHiYellow).SprintfFunc()
 	errorColor        = color.New(color.BgRed, color.FgWhite).SprintfFunc()
-	protocolTargetID  = center("protocol message", 36)
+	protocolTargetID  = center("browser", 32)
 )
 
 type FramesFormatter struct {
