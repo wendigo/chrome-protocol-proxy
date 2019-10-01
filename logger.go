@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/fatih/color"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -186,15 +186,15 @@ func createLogWriter(filename string) (io.Writer, error) {
 	return newMultiWriter(logFile, os.Stdout), nil
 }
 
-func createLogger(filename string) (*logrus.Logger, error) {
+func createLogger(name string) (*logrus.Logger, error) {
 
-	if _, exists := loggers[filename]; !exists {
-		writer, err := createLogWriter(filename)
+	if _, exists := loggers[name]; !exists {
+		writer, err := createLogWriter(name)
 		if err != nil {
 			return nil, err
 		}
 
-		loggers[filename] = &logrus.Logger{
+		loggers[name] = &logrus.Logger{
 			Out:       writer,
 			Formatter: new(FramesFormatter),
 			Hooks:     make(logrus.LevelHooks),
@@ -202,5 +202,17 @@ func createLogger(filename string) (*logrus.Logger, error) {
 		}
 	}
 
-	return loggers[filename], nil
+	return loggers[name], nil
+}
+
+func destroyLogger(name string) error {
+	if logger, exists := loggers[name]; exists {
+		if closer, ok := logger.Out.(io.Closer); ok {
+			closer.Close()
+		}
+
+		delete(loggers, name)
+	}
+
+	return nil
 }

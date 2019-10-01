@@ -7,13 +7,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"path"
+	"strings"
 
 	"errors"
 
@@ -43,12 +43,12 @@ func main() {
 		return func(res http.ResponseWriter, req *http.Request) {
 
 			stream := make(chan *protocolMessage, 1024)
-			id := path.Base(req.URL.Path)
+			id := strings.ReplaceAll(strings.TrimPrefix(req.URL.Path, "/devtools/"), "/", "-")
 
 			var protocolLogger *logrus.Entry
 
 			if *flagDistributeLogs {
-				logger, err := createLogger("inspector-" + id)
+				logger, err := createLogger(id)
 				if err != nil {
 					panic(fmt.Sprintf("could not create logger: %s", err))
 				}
@@ -66,9 +66,9 @@ func main() {
 
 			go dumpStream(protocolLogger, stream)
 
-			endpoint := "ws://" + *flagRemote + "/devtools/" + basePath + "/" + id
+			endpoint := "ws://" + *flagRemote + "/devtools/" + basePath + "/" + path.Base(req.URL.Path)
 
-			logger.Infof("---------- connection from %s ----------", req.RemoteAddr)
+			logger.Infof("---------- connection from %s to %s ----------", req.RemoteAddr, req.RequestURI)
 			logger.Infof("checking protocol versions on: %s", endpoint)
 
 			ver, err := checkVersion()
@@ -112,12 +112,12 @@ func main() {
 			go proxyWS(ctxt, stream, out, in, errc)
 
 			<-errc
-			logger.Infof("---------- closing %s ----------", req.RemoteAddr)
+			close(stream)
+
+			logger.Infof("---------- closing connection from %s to %s ----------", req.RemoteAddr, req.RequestURI)
 
 			if *flagDistributeLogs {
-				if closer, ok := protocolLogger.Logger.Out.(io.Closer); ok {
-					closer.Close()
-				}
+				destroyLogger(id)
 			}
 
 			if *flagOnce {
@@ -143,15 +143,26 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 
 	requests := make(map[uint64]*protocolMessage)
 	targetRequests := make(map[uint64]*protocolMessage)
+	sessions := make(map[string]interface{}, 0)
 
+loop:
 	for {
 		select {
-		case msg := <-stream:
+		case msg, ok := <-stream:
+			if !ok {
+				for sessionId := range sessions {
+					_ = destroyLogger(fmt.Sprintf("session-%s", sessionId))
+				}
+				break loop
+			}
+
 			if msg.HasSessionId() {
 				var targetLogger *logrus.Entry
 
 				if *flagDistributeLogs {
 					logger, err := createLogger(fmt.Sprintf("session-%s", msg.TargetID()))
+					sessions[msg.TargetID()] = interface{}(nil)
+
 					if err != nil {
 						panic(fmt.Sprintf("could not create logger: %v", err))
 					}
