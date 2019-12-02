@@ -22,3 +22,14 @@ archive:
   files:
     - LICENSE
     - README.md
+
+brews:
+  -
+    name: chrome-protocol-proxy
+    github:
+      owner: wendigo
+      name: homebrew-tap
+    folder: Formula
+    caveats: "Usage: chrome-protocol-proxy -i -m -r localhost:9222"
+    homepage: "https://github.com/wendigo/chrome-protocol-proxy"
+    description: "chrome-protocol-proxy is small reverse websocket proxy designed for chrome debugging protocol. It's purpose is to capture messages written to and received from Chrome Debugging Protocol, coalesce requests with responses, unpack messages from Target domain and provide easy to read, colored output."
