@@ -10,10 +10,14 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@master
-      - name: goreleaser
-        uses: docker://goreleaser/goreleaser
+      -
+        name: Set up Go
+        uses: actions/setup-go@v1
+      -
+        name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v1
+        with:
+          version: latest
+          args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: release
-        if: success()
