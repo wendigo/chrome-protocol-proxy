@@ -1,14 +1,21 @@
 builds:
   - binary: chrome-protocol-proxy
+    ldflags: -s -extldflags "-static"
+    env:
+      - CGO_ENABLED=0
     goos:
       - windows
       - darwin
       - linux
     goarch:
+      - 386
       - amd64
+      - arm
+      - arm64
 
 archive:
   format: tar.gz
+  wrap_in_directory: true
   replacements:
     amd64: x86_64
     darwin: macos
