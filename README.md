@@ -26,7 +26,7 @@ This image bundles headless Chrome in the latest version so debugger is ready to
 - request-response coalescing,
 - interprets [Target.sendMessageToTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#method-sendMessageToTarget) requests,
 - interprets [Target.receivedMessageFromTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#event-receivedMessageFromTarget) responses and events with [sessionId](https://chromium.googlesource.com/chromium/src/+/237f82767da3bbdcd8d6ad3fa4449ef6a3fe8bd3),
-- understands flatted sessions ([crbug.com/991325](crbug.com/991325))
+- understands flatted sessions ([crbug.com/991325](https://bugs.chromium.org/p/chromium/issues/detail?id=991325))
 - calculates and displays time delta between consecutive frames,
 - writes logs and splits them based on connection id and target/session id.
 
