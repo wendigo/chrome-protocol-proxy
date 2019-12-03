@@ -14,6 +14,14 @@
 
 ```go get -u github.com/wendigo/chrome-protocol-proxy```
 
+## Via docker
+
+```docker run -p 9222:9222 wendigo/chrome-protocol-proxy:latest```
+
+### Validate installation
+
+Head to [http://localhost:9222](http://localhost:9222).
+
 # Features
 - colored output,
 - protocol frames filtering,🖖
@@ -47,7 +55,7 @@
     	remote address (default "localhost:9222")
   -s	shorten requests and responses
   ```
-  
+
 # Demo
 [![asciicast](https://asciinema.org/a/113947.png)](https://asciinema.org/a/113947?t=0:04&autoplay=1&speed=0.4)
 
