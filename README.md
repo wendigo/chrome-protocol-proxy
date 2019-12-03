@@ -1,6 +1,6 @@
 # chrome-protocol-proxy
 
-```chrome-protocol-proxy``` is small, reverse proxy designed for working with [Chrome's DevTools protocol](https://github.com/ChromeDevTools/devtools-protocol). It captures all commands sent to and events received from Chrome, coalesce requests with responses, unpack messages from [Target domain](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/) and provide easy to read, colored output. This tool is a fork of (and heavily inspired by) [chromedp-proxy](https://github.com/knq/chromedp/tree/master/cmd/chromedp-proxy).
+```chrome-protocol-proxy``` is small, reverse proxy designed for working with [Chrome's DevTools protocol](https://github.com/ChromeDevTools/devtools-protocol). It captures all commands sent to and events received from Chrome, coalesce requests with responses, unpack messages from [Target domain](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/) and provide easy to read, colored output. This tool is a fork of (and heavily inspired by) [chromedp-proxy](https://github.com/chromedp/chromedp-proxy).
 
 ![chrome-protocol-proxy screenshot](https://pbs.twimg.com/media/C9nifD2WsAEkl4s.jpg:large)
 
