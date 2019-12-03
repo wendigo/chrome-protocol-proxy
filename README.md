@@ -4,7 +4,17 @@
 
 ![chrome-protocol-proxy screenshot](https://pbs.twimg.com/media/C9nifD2WsAEkl4s.jpg:large)
 
-## features
+# Installation
+
+## Via homebrew
+
+```brew install wendigo/tap/chrome-protocol-proxy```
+
+## Via go get
+
+```go get -u github.com/wendigo/chrome-protocol-proxy```
+
+# Features
 - colored output,
 - protocol frames filtering,🖖
 - request-response coalescing,
@@ -14,10 +24,7 @@
 - calculates and displays time delta between consecutive frames,
 - writes logs and splits them based on connection id and target/session id.
 
-## usage
-```go get -u github.com/wendigo/chrome-protocol-proxy```
-
-## configuration options
+# Usage
 ```
  Usage of chrome-protocol-proxy:
   -d	write logs file per session id
@@ -41,10 +48,10 @@
   -s	shorten requests and responses
   ```
   
-## demo
+# Demo
 [![asciicast](https://asciinema.org/a/113947.png)](https://asciinema.org/a/113947?t=0:04&autoplay=1&speed=0.4)
 
-## tips & tricks
+# Tips & tricks
 
 When using [Headless Chrome](https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md) navigate to [inspectable pages](http://localhost:9222/) and open inspector pane for url of your choosing. Then replace port in ```?ws=``` query param and point it to running ```chrome-protocol-proxy``` instance (default port is 9223). Now you're able to see what Chrome Debugger is exactly doing. Enjoy!
 
