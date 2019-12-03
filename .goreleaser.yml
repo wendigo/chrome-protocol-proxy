@@ -41,9 +41,9 @@ dockers:
     binaries:
     - chrome-protocol-proxy
     image_templates:
-    - "docker.pkg.github.com/wendigo/chrome-protocol-proxy/chrome-protocol-proxy:latest"
-    - "docker.pkg.github.com/wendigo/chrome-protocol-proxy/chrome-protocol-proxy:{{ .Tag }}"
-    - "docker.pkg.github.com/wendigo/chrome-protocol-proxy/chrome-protocol-proxy:v{{ .Major }}"
+    - "wendigo/chrome-protocol-proxy:latest"
+    - "wendigo/chrome-protocol-proxy:{{ .Tag }}"
+    - "wendigo/chrome-protocol-proxy:v{{ .Major }}"
     skip_push: false
     dockerfile: Dockerfile
     build_flag_templates:

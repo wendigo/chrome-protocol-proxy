@@ -10,11 +10,10 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@master
-      - name: docker login
-        run: |
-          docker login docker.pkg.github.com --username wendigo --password "${GITHUB_PACKAGE_REGISTRY_TOKEN}"
-        env:
-          GITHUB_PACKAGE_REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: azure/docker-login@v1
+        with:
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
       -
         name: setup-go
         uses: actions/setup-go@v1
