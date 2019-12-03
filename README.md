@@ -1,6 +1,6 @@
 # chrome-protocol-proxy
 
-```chrome-protocol-proxy``` is small reverse proxy designed for working with [Chrome's DevTools protocol](https://github.com/ChromeDevTools/devtools-protocol). It captures all commands sent to and events received from Chrome, coalesce requests with responses, unpack messages from [Target domain](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/) and provide easy to read, colored output. This tool is a fork of (and heavily inspired by) [chromedp-proxy](https://github.com/knq/chromedp/tree/master/cmd/chromedp-proxy).
+```chrome-protocol-proxy``` is small, reverse proxy designed for working with [Chrome's DevTools protocol](https://github.com/ChromeDevTools/devtools-protocol). It captures all commands sent to and events received from Chrome, coalesce requests with responses, unpack messages from [Target domain](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/) and provide easy to read, colored output. This tool is a fork of (and heavily inspired by) [chromedp-proxy](https://github.com/knq/chromedp/tree/master/cmd/chromedp-proxy).
 
 ![chrome-protocol-proxy screenshot](https://pbs.twimg.com/media/C9nifD2WsAEkl4s.jpg:large)
 
@@ -59,9 +59,3 @@ Head to [http://localhost:9222](http://localhost:9222).
 
 # Demo
 [![asciicast](https://asciinema.org/a/113947.png)](https://asciinema.org/a/113947?t=0:04&autoplay=1&speed=0.4)
-
-# Tips & tricks
-
-When using [Headless Chrome](https://chromium.googlesource.com/chromium/src/+/lkgr/headless/README.md) navigate to [inspectable pages](http://localhost:9222/) and open inspector pane for url of your choosing. Then replace port in ```?ws=``` query param and point it to running ```chrome-protocol-proxy``` instance (default port is 9223). Now you're able to see what Chrome Debugger is exactly doing. Enjoy!
-
-![headless chrome inspector traffic](https://pbs.twimg.com/media/C9nu8pIXsAE2Cpf.jpg:large)
