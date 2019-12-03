@@ -50,3 +50,5 @@ dockers:
     - "--label=org.label-schema.schema-version=1.0"
     - "--label=org.label-schema.version={{.Version}}"
     - "--label=org.label-schema.name={{.ProjectName}}"
+    extra_files:
+      - docker/run.sh
