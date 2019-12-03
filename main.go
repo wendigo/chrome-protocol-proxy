@@ -31,7 +31,7 @@ func main() {
 	flag.Parse()
 
 	if *flagVersion {
-		fmt.Printf("%s version %s (commit %s) built on %s by %s\n\nConfiguration:\n", os.Args[0], commit, version, date, builtBy)
+		fmt.Printf("%s version %s built on %s by %s\n\nConfiguration:\n", os.Args[0], version, date, builtBy)
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
