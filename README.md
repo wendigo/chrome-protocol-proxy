@@ -16,7 +16,7 @@
 
 ## Via docker
 
-```docker run -p 9222:9222 wendigo/chrome-protocol-proxy:latest```
+```docker run -t -i -p 9222:9222 wendigo/chrome-protocol-proxy:latest```
 
 ### Validate installation
 
