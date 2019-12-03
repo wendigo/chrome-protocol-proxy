@@ -37,9 +37,9 @@ brews:
 dockers:
   -
     goos: linux
-    goarch: amd64    
+    goarch: amd64
     binaries:
-    - mybinary
+    - chrome-protocol-proxy
     image_templates:
     - "docker.pkg.github.com/wendigo/chrome-protocol-proxy/chrome-protocol-proxy:latest"
     - "docker.pkg.github.com/wendigo/chrome-protocol-proxy/chrome-protocol-proxy:{{ .Tag }}"
