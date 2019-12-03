@@ -18,9 +18,7 @@
 
 ```docker run -t -i -p 9222:9222 wendigo/chrome-protocol-proxy:latest```
 
-### Validate installation
-
-Head to [http://localhost:9222](http://localhost:9222).
+This image bundles headless Chrome in the latest version so debugger is ready to use (head to [http://localhost:9222](http://localhost:9222) to validate).
 
 # Features
 - colored output,
