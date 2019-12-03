@@ -1,6 +1,6 @@
 builds:
   - binary: chrome-protocol-proxy
-    ldflags: -s -extldflags "-static"
+    ldflags: -s -extldflags "-static" -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser    
     env:
       - CGO_ENABLED=0
     goos:

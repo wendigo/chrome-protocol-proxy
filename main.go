@@ -20,8 +20,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	version string = "unknown"
+	commit  string = "unknown"
+	date    string = "unknown"
+	builtBy string = "unknown"
+)
+
 func main() {
 	flag.Parse()
+
+	if *flagVersion {
+		fmt.Printf("%s version %s (commit %s) built on %s by %s\n\nConfiguration:\n", os.Args[0], commit, version, date, builtBy)
+		flag.PrintDefaults()
+		os.Exit(1)
+	}
 
 	mux := http.NewServeMux()
 
@@ -128,6 +141,8 @@ func main() {
 
 	mux.HandleFunc("/devtools/page/", handlerFunc("page"))
 	mux.HandleFunc("/devtools/browser/", handlerFunc("browser"))
+
+	log.Printf("Listening for DevTools connections on: %s", *flagListen)
 
 	log.Fatal(http.ListenAndServe(*flagListen, mux))
 }

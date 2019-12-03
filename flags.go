@@ -15,4 +15,5 @@ var (
 	flagMicroseconds   = flag.Bool("m", false, "display time in microseconds")
 	flagDelta          = flag.Bool("delta", false, "show delta time between log entries")
 	flagDirLogs        = flag.String("log-dir", "logs", "logs directory")
+	flagVersion        = flag.Bool("version", false, "display version information")
 )
