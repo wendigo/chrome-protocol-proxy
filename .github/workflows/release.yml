@@ -10,6 +10,11 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@master
+      - name: Push
+        run: |
+          docker login docker.pkg.github.com --username wendigo --password "${GITHUB_PACKAGE_REGISTRY_TOKEN}"
+        env:
+          GITHUB_PACKAGE_REGISTRY_TOKEN: ${{ secrets.GITHUB_PACKAGE_REGISTRY_TOKEN }}
       -
         name: Set up Go
         uses: actions/setup-go@v1

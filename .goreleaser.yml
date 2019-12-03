@@ -1,6 +1,6 @@
 builds:
   - binary: chrome-protocol-proxy
-    ldflags: -s -extldflags "-static" -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser    
+    ldflags: -s -extldflags "-static" -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser
     env:
       - CGO_ENABLED=0
     goos:
@@ -33,3 +33,21 @@ brews:
     caveats: "Usage: chrome-protocol-proxy -i -m -r localhost:9222"
     homepage: "https://github.com/wendigo/chrome-protocol-proxy"
     description: "chrome-protocol-proxy is small reverse websocket proxy designed for chrome debugging protocol. It's purpose is to capture messages written to and received from Chrome Debugging Protocol, coalesce requests with responses, unpack messages from Target domain and provide easy to read, colored output."
+
+dockers:
+  -
+    goos: linux
+    goarch: amd64    
+    binaries:
+    - mybinary
+    image_templates:
+    - "docker.pkg.github.com/wendigo/chrome-protocol-proxy/chrome-protocol-proxy:latest"
+    - "docker.pkg.github.com/wendigo/chrome-protocol-proxy/chrome-protocol-proxy:{{ .Tag }}"
+    - "docker.pkg.github.com/wendigo/chrome-protocol-proxy/chrome-protocol-proxy:{{ .Tag }}-{{ .Env.GO_VERSION }}"
+    - "docker.pkg.github.com/wendigo/chrome-protocol-proxy/chrome-protocol-proxy:v{{ .Major }}"
+    skip_push: false
+    dockerfile: Dockerfile
+    build_flag_templates:
+    - "--label=org.label-schema.schema-version=1.0"
+    - "--label=org.label-schema.version={{.Version}}"
+    - "--label=org.label-schema.name={{.ProjectName}}"
