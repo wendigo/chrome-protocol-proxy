@@ -3,7 +3,7 @@ module github.com/wendigo/chrome-protocol-proxy
 go 1.13
 
 require (
-	github.com/fatih/color v1.7.0
+	github.com/fatih/color v1.9.0
 	github.com/gorilla/websocket v1.4.1
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mattn/go-colorable v0.1.2 // indirect
