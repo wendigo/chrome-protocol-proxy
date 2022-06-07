@@ -45,10 +45,11 @@ const (
 )
 
 var (
-	responseColor     = color.New(color.FgHiGreen).SprintfFunc()
+	responseColor     = color.New(color.FgHiRed).SprintfFunc()
 	requestColor      = color.New(color.FgHiBlue).SprintFunc()
-	requestReplyColor = color.New(color.FgGreen).SprintfFunc()
-	eventsColor       = color.New(color.FgHiRed).SprintfFunc()
+	requestReplyColor = color.New(color.FgHiWhite).SprintfFunc()
+	eventsColor       = color.New(color.FgGreen).SprintfFunc()
+	eventsLabelColor  = color.New(color.FgCyan).SprintfFunc()
 	protocolColor     = color.New(color.FgYellow).SprintfFunc()
 	protocolError     = color.New(color.FgHiYellow, color.BgRed).SprintfFunc()
 	targetColor       = color.New(color.FgHiWhite).SprintfFunc()
@@ -115,7 +116,7 @@ func (f *FramesFormatter) Format(e *logrus.Entry) ([]byte, error) {
 
 		switch protocolType {
 		case typeEvent:
-			return []byte(fmt.Sprintf(eventFormat, timestamp, targetColor(targetID), methodColor(protocolMethod), eventsColor(message))), nil
+			return []byte(fmt.Sprintf(eventFormat, timestamp, targetColor(targetID), eventsLabelColor(protocolMethod), eventsColor(message))), nil
 
 		case typeRequest:
 			return []byte(fmt.Sprintf(requestFormat, timestamp, targetColor(targetID), methodColor(protocolMethod), requestColor(message))), nil
