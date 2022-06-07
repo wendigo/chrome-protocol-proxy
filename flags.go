@@ -14,6 +14,7 @@ var (
 	flagQuiet          = flag.Bool("q", false, "do not show logs on stdout")
 	flagMicroseconds   = flag.Bool("m", false, "display time in microseconds")
 	flagDelta          = flag.Bool("delta", false, "show delta time between log entries")
+	flagForceColor     = flag.Bool("force-color", false, "force color output regardless of TTY")
 	flagDirLogs        = flag.String("log-dir", "logs", "logs directory")
 	flagVersion        = flag.Bool("version", false, "display version information")
 )

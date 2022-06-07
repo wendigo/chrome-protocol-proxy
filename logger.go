@@ -187,6 +187,9 @@ func createLogWriter(filename string) (io.Writer, error) {
 }
 
 func createLogger(name string) (*logrus.Logger, error) {
+	if *flagForceColor {
+		color.NoColor = false
+	}
 
 	if _, exists := loggers[name]; !exists {
 		writer, err := createLogWriter(name)
