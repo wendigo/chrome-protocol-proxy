@@ -6,10 +6,6 @@ import (
 	"strings"
 )
 
-const (
-	ellipsisLength = 80
-)
-
 func center(message string, length int) string {
 	padding := (length - len(message)) / 2
 
@@ -32,8 +28,8 @@ func serialize(value interface{}) string {
 
 	buff, err := json.Marshal(value)
 	if err == nil {
-		if *flagEllipsis && len(buff) > ellipsisLength {
-			return string(buff[:ellipsisLength]) + "..."
+		if *flagEllipsis != 0 && len(buff) > *flagEllipsis {
+			return string(buff[:*flagEllipsis]) + "..."
 		}
 
 		serialized := string(buff)

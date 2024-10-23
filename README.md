@@ -50,7 +50,8 @@ This image bundles headless Chrome in the latest version so debugger is ready to
 -q	do not show logs on stdout
 -r string
    remote address (default "localhost:9222")
--s	shorten requests and responses
+-s max_length
+   shorten requests and responses to max_length
 -version
    display version information
   ```

@@ -7,7 +7,7 @@ import (
 var (
 	flagListen         = flag.String("l", "localhost:9223", "listen address")
 	flagRemote         = flag.String("r", "localhost:9222", "remote address")
-	flagEllipsis       = flag.Bool("s", false, "shorten requests and responses")
+	flagEllipsis       = flag.Int("s", 0, "shorten requests and responses if above length")
 	flagOnce           = flag.Bool("once", false, "debug single session")
 	flagShowRequests   = flag.Bool("i", false, "include request frames as they are sent")
 	flagDistributeLogs = flag.Bool("d", false, "write logs file per targetId")
