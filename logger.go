@@ -36,9 +36,9 @@ const (
 )
 
 const (
-	requestReplyFormat = "%-17s %-32s % 48s(%s) = %s\n"
-	requestFormat      = "%-17s %-32s % 48s(%s)\n"
-	eventFormat        = "%-17s %-32s % 48s(%s)\n"
+	requestReplyFormat = "%-17s %-32s % 48s %s => %s\n"
+	requestFormat      = "%-17s %-32s % 48s %s\n"
+	eventFormat        = "%-17s %-32s % 48s %s\n"
 	protocolFormat     = "%-17s %-32s\n"
 	timeFormat         = "15:04:05.00000000"
 	deltaFormat        = "Δ%8.2fms"

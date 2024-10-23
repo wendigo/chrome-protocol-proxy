@@ -52,6 +52,7 @@ func decodeMessage(bytes []byte) (*protocolMessage, error) {
 		return nil, err
 	}
 
+	msg.raw = string(bytes[:])
 	return &msg, nil
 }
 
