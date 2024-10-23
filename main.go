@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 
 	"errors"
@@ -142,7 +143,7 @@ func main() {
 	mux.HandleFunc("/devtools/page/", handlerFunc("page"))
 	mux.HandleFunc("/devtools/browser/", handlerFunc("browser"))
 
-	log.Printf("Listening for DevTools connections on: %s", *flagListen)
+	log.Printf("Proxy is listening for DevTools connections on: %s", *flagListen)
 
 	log.Fatal(http.ListenAndServe(*flagListen, mux))
 }
@@ -157,8 +158,7 @@ func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
 	)
 
 	requests := make(map[uint64]*protocolMessage)
-	targetRequests := make(map[uint64]*protocolMessage)
-	sessions := make(map[string]interface{}, 0)
+	sessions := make(map[string]map[uint64]*protocolMessage)
 
 loop:
 	for {
@@ -174,9 +174,14 @@ loop:
 			if msg.HasSessionId() {
 				var targetLogger *logrus.Entry
 
+				targetRequests, exists := sessions[msg.TargetID()]
+				if !exists {
+					targetRequests = make(map[uint64]*protocolMessage)
+					sessions[msg.TargetID()] = targetRequests
+				}
+
 				if *flagDistributeLogs {
 					logger, err := createLogger(fmt.Sprintf("session-%s", msg.TargetID()))
-					sessions[msg.TargetID()] = interface{}(nil)
 
 					if err != nil {
 						panic(fmt.Sprintf("could not create logger: %v", err))
@@ -203,7 +208,7 @@ loop:
 						if *flagShowRequests {
 							targetLogger.WithFields(logrus.Fields{
 								fieldType:   typeRequest,
-								fieldMethod: protocolMessage.Method,
+								fieldMethod: protocolMessage.Method + "-(" + strconv.FormatUint(msg.ID, 10) + ")",
 							}).Info(serialize(protocolMessage.Params))
 						}
 
@@ -212,18 +217,14 @@ loop:
 							fieldLevel: levelConnection,
 						}).Errorf("Could not deserialize message: %+v", err)
 					}
-				}
-
-				if msg.IsEvent() {
+				} else if msg.IsEvent() {
 					if protocolMessage, err := decodeProtocolMessage(msg); err == nil {
 						if protocolMessage.IsEvent() {
 							targetLogger.WithFields(logrus.Fields{
 								fieldType:   typeEvent,
 								fieldMethod: protocolMessage.Method,
 							}).Info(serialize(protocolMessage.Params))
-						}
-
-						if protocolMessage.IsResponse() {
+						} else if protocolMessage.IsResponse() {
 							var logMessage string
 							var logType int
 							var logRequest string
@@ -246,17 +247,68 @@ loop:
 								logRequest = errorColor("could not find request with id: %d", protocolMessage.ID)
 							}
 
+							if *flagShowRequests {
+								logMethod += "*(" + strconv.FormatUint(msg.ID, 10) + ")"
+							} else {
+								logMethod += "*"
+							}
+
 							targetLogger.WithFields(logrus.Fields{
 								fieldType:    logType,
 								fieldMethod:  logMethod,
 								fieldRequest: logRequest,
 							}).Info(logMessage)
+						} else {
+							targetLogger.WithFields(logrus.Fields{
+								fieldType:   typeRequest,
+								fieldMethod: msg.Method,
+							}).Info("Could not understand session event: " + msg.raw)
 						}
 					} else {
 						logger.WithFields(logrus.Fields{
 							fieldLevel: levelConnection,
 						}).Errorf("Could not deserialize message: %+v", err)
 					}
+				} else if msg.IsResponse() {
+					var logMessage string
+					var logType int
+					var logRequest string
+					var logMethod string
+
+					if msg.IsError() {
+						logMessage = serialize(msg.Error)
+						logType = typeRequestResponseError
+					} else {
+						logMessage = serialize(msg.Result)
+						logType = typeRequestResponse
+					}
+
+					if request, ok := targetRequests[msg.ID]; ok && request != nil {
+						delete(targetRequests, msg.ID)
+						logRequest = serialize(request.Params)
+						logMethod = request.Method
+
+					} else {
+						logRequest = errorColor("could not find request with id: %d", msg.ID)
+					}
+
+					if *flagShowRequests {
+						logMethod += "*(" + strconv.FormatUint(msg.ID, 10) + ")"
+					} else {
+						logMethod += "*"
+					}
+
+					targetLogger.WithFields(logrus.Fields{
+						fieldType:    logType,
+						fieldMethod:  logMethod,
+						fieldRequest: logRequest,
+					}).Info(logMessage)
+
+				} else {
+					targetLogger.WithFields(logrus.Fields{
+						fieldType:   typeRequest,
+						fieldMethod: msg.Method,
+					}).Info("Could not understand session message: " + msg.raw)
 				}
 
 			} else {
@@ -271,12 +323,10 @@ loop:
 					if *flagShowRequests {
 						protocolLogger.WithFields(logrus.Fields{
 							fieldType:   typeRequest,
-							fieldMethod: msg.Method,
+							fieldMethod: msg.Method + "-(" + strconv.FormatUint(msg.ID, 10) + ")",
 						}).Info(serialize(msg.Params))
 					}
-				}
-
-				if msg.IsResponse() {
+				} else if msg.IsResponse() {
 
 					var logMessage string
 					var logType int
@@ -303,13 +353,16 @@ loop:
 							fieldRequest: logRequest,
 						}).Info(logMessage)
 					}
-				}
-
-				if msg.IsEvent() {
+				} else if msg.IsEvent() {
 					protocolLogger.WithFields(logrus.Fields{
 						fieldType:   typeEvent,
 						fieldMethod: msg.Method,
 					}).Info(serialize(msg.Params))
+				} else {
+					protocolLogger.WithFields(logrus.Fields{
+						fieldType:   typeRequest,
+						fieldMethod: msg.Method,
+					}).Info("Could not understand message: " + msg.raw)
 				}
 			}
 		}

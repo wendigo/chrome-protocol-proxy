@@ -3,6 +3,10 @@ package main
 import "fmt"
 
 type protocolMessage struct {
+	/**
+	The raw message as string.
+	*/
+	raw    string
 	ID     uint64                 `json:"id"`
 	Result map[string]interface{} `json:"result"`
 	Error  struct {
@@ -32,7 +36,7 @@ func (p *protocolMessage) IsError() bool {
 }
 
 func (p *protocolMessage) IsResponse() bool {
-	return p.Method == "" && p.ID > 0
+	return p.Result != nil && p.ID > 0
 }
 
 func (p *protocolMessage) IsRequest() bool {

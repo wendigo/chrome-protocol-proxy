@@ -37,6 +37,8 @@ This image bundles headless Chrome in the latest version so debugger is ready to
    show delta time between log entries
 -exclude value
    exclude requests/responses/events matching pattern (default exclude = )
+-force-color
+   force color output regardless of TTY
 -i	include request frames as they are sent
 -include value
    display only requests/responses/events matching pattern (default include = )
