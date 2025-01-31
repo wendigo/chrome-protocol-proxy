@@ -1,3 +1,4 @@
+version: 2
 builds:
   - binary: chrome-protocol-proxy
     ldflags: -s -extldflags "-static" -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser
