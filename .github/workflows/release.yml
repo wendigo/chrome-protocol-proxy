@@ -1,7 +1,7 @@
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 name: Release new version
 jobs:
   release:
@@ -14,16 +14,14 @@ jobs:
         with:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-      -
-        name: setup-go
+      - name: setup-go
         uses: actions/setup-go@v1
         with:
-          go-version: '1.23.x'
-      -
-        name: goreleaser
+          go-version: "1.23.x"
+      - name: goreleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
           args: release
         env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
