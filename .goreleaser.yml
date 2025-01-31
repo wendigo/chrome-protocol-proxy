@@ -8,7 +8,6 @@ builds:
       - darwin
       - linux
     goarch:
-      - 386
       - amd64
       - arm
       - arm64
@@ -16,21 +15,17 @@ builds:
 archives:
   - format: tar.gz
     wrap_in_directory: true
-    replacements:
-      amd64: x86_64
-      darwin: macos
     files:
       - LICENSE
       - README.md
 
 brews:
-  -
-    name: chrome-protocol-proxy
-    folder: Formula
+  - name: chrome-protocol-proxy
     caveats: "Usage: chrome-protocol-proxy -i -m -r localhost:9222"
     homepage: "https://github.com/wendigo/chrome-protocol-proxy"
     description: "chrome-protocol-proxy is small reverse websocket proxy designed for chrome debugging protocol. It's purpose is to capture messages written to and received from Chrome Debugging Protocol, coalesce requests with responses, unpack messages from Target domain and provide easy to read, colored output."
-    tap:
+    directory: Formula
+    repository:
       owner: wendigo
       name: homebrew-tap
 
@@ -38,22 +33,23 @@ dockers:
   - goos: linux
     goarch: amd64
     image_templates:
-    - "wendigo/chrome-protocol-proxy:latest"
-    - "wendigo/chrome-protocol-proxy:{{ .Tag }}"
-    - "wendigo/chrome-protocol-proxy:v{{ .Major }}"
+      - "wendigo/chrome-protocol-proxy:latest"
+      - "wendigo/chrome-protocol-proxy:{{ .Tag }}"
+      - "wendigo/chrome-protocol-proxy:v{{ .Major }}"
     skip_push: false
     dockerfile: Dockerfile
     build_flag_templates:
-    - "--label=org.label-schema.schema-version=1.0"
-    - "--label=org.label-schema.version={{.Version}}"
-    - "--label=org.label-schema.name={{.ProjectName}}"
+      - "--label=org.label-schema.schema-version=1.0"
+      - "--label=org.label-schema.version={{.Version}}"
+      - "--label=org.label-schema.name={{.ProjectName}}"
     extra_files:
       - docker/run.sh
 
-scoop:
-  bucket:
-    owner: wendigo
-    name: scoop-bucket
-  homepage: "https://github.com/wendigo/chrome-protocol-proxy"
-  description: "chrome-protocol-proxy is small reverse websocket proxy designed for chrome debugging protocol. It's purpose is to capture messages written to and received from Chrome Debugging Protocol, coalesce requests with responses, unpack messages from Target domain and provide easy to read, colored output."
-  license: MIT
+scoops:
+  - name: chrome-protocol-proxy
+    repository:
+      owner: wendigo
+      name: scoop-bucket
+    homepage: "https://github.com/wendigo/chrome-protocol-proxy"
+    description: "chrome-protocol-proxy is small reverse websocket proxy designed for chrome debugging protocol. It's purpose is to capture messages written to and received from Chrome Debugging Protocol, coalesce requests with responses, unpack messages from Target domain and provide easy to read, colored output."
+    license: MIT
