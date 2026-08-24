@@ -6,19 +6,30 @@
 
 # Installation
 
-## Via homebrew
+## Via homebrew (macOS)
 
-```brew install wendigo/tap/chrome-protocol-proxy```
+```brew install --cask wendigo/tap/chrome-protocol-proxy```
 
-## Via go get
+## Via scoop (Windows)
 
-```go get -u github.com/wendigo/chrome-protocol-proxy```
+```
+scoop bucket add wendigo https://github.com/wendigo/scoop-bucket
+scoop install chrome-protocol-proxy
+```
+
+## Via go install
+
+```go install github.com/wendigo/chrome-protocol-proxy@latest```
 
 ## Via docker
 
 ```docker run -t -i -p 9222:9222 wendigo/chrome-protocol-proxy:latest```
 
 This image bundles headless Chrome in the latest version so debugger is ready to use (head to [http://localhost:9222](http://localhost:9222) to validate).
+
+## Via binary download
+
+Prebuilt binaries for Linux, macOS and Windows (amd64, arm and arm64) are available on the [releases page](https://github.com/wendigo/chrome-protocol-proxy/releases).
 
 # Features
 - colored output,
