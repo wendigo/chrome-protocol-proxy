@@ -1,27 +1,30 @@
 package main
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type protocolMessage struct {
 	/**
 	The raw message as string.
 	*/
 	raw    string
-	ID     uint64                 `json:"id"`
-	Result map[string]interface{} `json:"result"`
+	ID     uint64          `json:"id"`
+	Result json.RawMessage `json:"result"`
 	Error  struct {
 		Code    int64  `json:"code"`
 		Message string `json:"message"`
 		Data    string `json:"data"`
 	} `json:"error"`
-	Method    string                 `json:"method"`
-	Params    map[string]interface{} `json:"params"`
-	SessionId string                 `json:"sessionId"`
+	Method    string          `json:"method"`
+	Params    json.RawMessage `json:"params"`
+	SessionId string          `json:"sessionId"`
 }
 
 func (p *protocolMessage) String() string {
 	return fmt.Sprintf(
-		"protocolMessage{id=%d, method=%s, sessionId=%s, result=%+v, error=%+v, params=%+v}",
+		"protocolMessage{id=%d, method=%s, sessionId=%s, result=%s, error=%+v, params=%s}",
 		p.ID,
 		p.Method,
 		p.SessionId,
@@ -36,7 +39,7 @@ func (p *protocolMessage) IsError() bool {
 }
 
 func (p *protocolMessage) IsResponse() bool {
-	return p.Result != nil && p.ID > 0
+	return p.ID > 0 && (len(p.Result) > 0 || p.IsError())
 }
 
 func (p *protocolMessage) IsRequest() bool {
@@ -65,8 +68,12 @@ func (p *protocolMessage) TargetID() string {
 	}
 
 	if p.FromTargetDomain() {
-		if val, ok := p.Params["sessionId"]; ok {
-			return val.(string)
+		var params struct {
+			SessionID string `json:"sessionId"`
+		}
+
+		if json.Unmarshal(p.Params, &params) == nil {
+			return params.SessionID
 		}
 	}
 

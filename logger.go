@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -160,7 +159,7 @@ func createLogWriter(filename string) (io.Writer, error) {
 
 	if filename == "" {
 		if *flagQuiet {
-			return ioutil.Discard, nil
+			return io.Discard, nil
 		}
 
 		return os.Stdout, nil
