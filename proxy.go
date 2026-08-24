@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"github.com/gorilla/websocket"
 	"net/http"
+
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -24,7 +25,7 @@ var wsDialer = &websocket.Dialer{
 	WriteBufferSize: incomingBufferSize,
 }
 
-func proxyWS(ctxt context.Context, stream chan *protocolMessage, in, out *websocket.Conn, errc chan error) {
+func proxyWS(ctxt context.Context, stream chan *protocolMessage, from, to *websocket.Conn, errc chan error, conn *proxiedConnection, direction string) {
 	var mt int
 	var buf []byte
 	var err error
@@ -32,17 +33,35 @@ func proxyWS(ctxt context.Context, stream chan *protocolMessage, in, out *websoc
 	for {
 		select {
 		default:
-			mt, buf, err = in.ReadMessage()
+			mt, buf, err = from.ReadMessage()
 			if err != nil {
 				errc <- err
 				return
 			}
 
-			if msg, derr := decodeMessage(buf); derr == nil {
+			msg, derr := decodeMessage(buf)
+
+			// Responses to commands injected from the UI are consumed here: the
+			// proxied client never sent those requests, so they are only shown in
+			// the UI and are not forwarded or logged.
+			if derr == nil && direction == directionRecv && conn.claimInjectedResponse(msg) {
+				hub.publishFrame(conn, direction, buf, true)
+				continue
+			}
+
+			if derr == nil {
 				stream <- msg
 			}
 
-			err = out.WriteMessage(mt, buf)
+			hub.publishFrame(conn, direction, buf, false)
+
+			// Writes towards the browser must go through the connection so they
+			// do not interleave with UI command injection.
+			if direction == directionSend {
+				err = conn.writeToBrowser(mt, buf)
+			} else {
+				err = to.WriteMessage(mt, buf)
+			}
 
 			if err != nil {
 				errc <- err

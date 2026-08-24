@@ -16,5 +16,6 @@ var (
 	flagDelta          = flag.Bool("delta", false, "show delta time between log entries")
 	flagForceColor     = flag.Bool("force-color", false, "force color output regardless of TTY")
 	flagDirLogs        = flag.String("log-dir", "logs", "logs directory")
+	flagUI             = flag.Bool("ui", true, "serve interactive UI on /ui")
 	flagVersion        = flag.Bool("version", false, "display version information")
 )

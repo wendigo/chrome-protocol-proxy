@@ -23,6 +23,7 @@ This image bundles headless Chrome in the latest version so debugger is ready to
 # Features
 - colored output,
 - protocol frames filtering,🖖
+- interactive web UI with live frame streaming, searching, filtering and command sending (see below),
 - request-response coalescing,
 - interprets [Target.sendMessageToTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#method-sendMessageToTarget) requests,
 - interprets [Target.receivedMessageFromTarget](https://chromedevtools.github.io/debugger-protocol-viewer/tot/Target/#event-receivedMessageFromTarget) responses and events with [sessionId](https://chromium.googlesource.com/chromium/src/+/237f82767da3bbdcd8d6ad3fa4449ef6a3fe8bd3),
@@ -54,9 +55,21 @@ This image bundles headless Chrome in the latest version so debugger is ready to
    remote address (default "localhost:9222")
 -s max_length
    shorten requests and responses to max_length
+-ui
+   serve interactive UI on /ui (default true)
 -version
    display version information
   ```
+
+# Interactive UI
+
+While the proxy is running, an interactive UI is available on [http://localhost:9223/ui](http://localhost:9223/ui) (disable with `-ui=false`). It streams all captured protocol frames live and allows to:
+
+- search frames and filter them by pattern (include/exclude) and by type (requests, responses, events),
+- pause, resume and clear the captured stream, inspect any frame as pretty-printed JSON,
+- send DevTools protocol commands to any active connection (optionally within a session), including replaying captured requests.
+
+Commands sent from the UI use a reserved id range (starting at 1000000000) so their responses are intercepted by the proxy and shown only in the UI — the proxied client never sees them.
 
 # Demo
 [![asciicast](https://asciinema.org/a/113947.png)](https://asciinema.org/a/113947?t=0:04&autoplay=1&speed=0.4)

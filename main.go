@@ -37,6 +37,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.Printf("Proxy is listening for DevTools connections on: %s", *flagListen)
+
+	if *flagUI {
+		log.Printf("Interactive UI is available on: http://%s/ui", *flagListen)
+	}
+
+	log.Fatal(http.ListenAndServe(*flagListen, createMux()))
+}
+
+func createMux() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	simpleReverseProxy := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: *flagRemote})
@@ -108,6 +118,9 @@ func main() {
 			defer pres.Body.Close()
 			defer out.Close()
 
+			conn := hub.register(id, endpoint, out)
+			defer hub.unregister(conn)
+
 			// connect incoming websocket
 			logger.Infof("upgrading connection on %s...", req.RemoteAddr)
 			in, err := wsUpgrader.Upgrade(res, req, nil)
@@ -122,8 +135,8 @@ func main() {
 			defer cancel()
 
 			errc := make(chan error, 1)
-			go proxyWS(ctxt, stream, in, out, errc)
-			go proxyWS(ctxt, stream, out, in, errc)
+			go proxyWS(ctxt, stream, in, out, errc, conn, directionSend)
+			go proxyWS(ctxt, stream, out, in, errc, conn, directionRecv)
 
 			<-errc
 			close(stream)
@@ -143,9 +156,12 @@ func main() {
 	mux.HandleFunc("/devtools/page/", handlerFunc("page"))
 	mux.HandleFunc("/devtools/browser/", handlerFunc("browser"))
 
-	log.Printf("Proxy is listening for DevTools connections on: %s", *flagListen)
+	if *flagUI {
+		mux.HandleFunc("/ui", serveUI)
+		mux.HandleFunc("/ui/ws", uiWSHandler)
+	}
 
-	log.Fatal(http.ListenAndServe(*flagListen, mux))
+	return mux
 }
 
 func dumpStream(logger *logrus.Entry, stream chan *protocolMessage) {
