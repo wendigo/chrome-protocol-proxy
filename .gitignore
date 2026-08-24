@@ -1,3 +1,4 @@
 .idea
 logs
 chrome-protocol-proxy
+dist/
