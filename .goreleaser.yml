@@ -30,6 +30,11 @@ homebrew_casks:
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     hooks:
+      pre:
+        install: |
+          if (HOMEBREW_PREFIX/"Cellar/chrome-protocol-proxy").exist?
+            odie "An old chrome-protocol-proxy formula keg is installed and would shadow this cask's binary. Remove it first with: brew uninstall --formula chrome-protocol-proxy"
+          end
       post:
         install: |
           if OS.mac?
