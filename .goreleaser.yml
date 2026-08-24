@@ -14,35 +14,41 @@ builds:
       - arm64
 
 archives:
-  - format: tar.gz
+  - formats: ["tar.gz"]
     wrap_in_directory: true
     files:
       - LICENSE
       - README.md
 
-brews:
+homebrew_casks:
   - name: chrome-protocol-proxy
     caveats: "Usage: chrome-protocol-proxy -i -m -r localhost:9222"
     homepage: "https://github.com/wendigo/chrome-protocol-proxy"
     description: "chrome-protocol-proxy is small reverse websocket proxy designed for chrome debugging protocol. It's purpose is to capture messages written to and received from Chrome Debugging Protocol, coalesce requests with responses, unpack messages from Target domain and provide easy to read, colored output."
-    directory: Formula
     repository:
       owner: wendigo
       name: homebrew-tap
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/chrome-protocol-proxy"]
+          end
 
-dockers:
-  - goos: linux
-    goarch: amd64
-    image_templates:
-      - "wendigo/chrome-protocol-proxy:latest"
-      - "wendigo/chrome-protocol-proxy:{{ .Tag }}"
-      - "wendigo/chrome-protocol-proxy:v{{ .Major }}"
-    skip_push: false
+dockers_v2:
+  - images:
+      - "wendigo/chrome-protocol-proxy"
+    tags:
+      - "{{ .Tag }}"
+      - "v{{ .Major }}"
+      - "latest"
+    platforms:
+      - linux/amd64
     dockerfile: Dockerfile
-    build_flag_templates:
-      - "--label=org.label-schema.schema-version=1.0"
-      - "--label=org.label-schema.version={{.Version}}"
-      - "--label=org.label-schema.name={{.ProjectName}}"
+    labels:
+      "org.label-schema.schema-version": "1.0"
+      "org.label-schema.version": "{{.Version}}"
+      "org.label-schema.name": "{{.ProjectName}}"
     extra_files:
       - docker/run.sh
 
