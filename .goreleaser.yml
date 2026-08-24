@@ -28,6 +28,7 @@ homebrew_casks:
     repository:
       owner: wendigo
       name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     hooks:
       post:
         install: |
@@ -57,6 +58,7 @@ scoops:
     repository:
       owner: wendigo
       name: scoop-bucket
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/wendigo/chrome-protocol-proxy"
     description: "chrome-protocol-proxy is small reverse websocket proxy designed for chrome debugging protocol. It's purpose is to capture messages written to and received from Chrome Debugging Protocol, coalesce requests with responses, unpack messages from Target domain and provide easy to read, colored output."
     license: MIT
