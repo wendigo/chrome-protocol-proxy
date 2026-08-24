@@ -44,14 +44,15 @@ const (
 )
 
 var (
-	responseColor     = color.New(color.FgHiRed).SprintfFunc()
+	timeColor         = color.New(color.Faint).SprintFunc()
+	responseColor     = color.New(color.FgHiMagenta).SprintfFunc()
 	requestColor      = color.New(color.FgHiBlue).SprintFunc()
 	requestReplyColor = color.New(color.FgHiWhite).SprintfFunc()
 	eventsColor       = color.New(color.FgGreen).SprintfFunc()
 	eventsLabelColor  = color.New(color.FgCyan).SprintfFunc()
 	protocolColor     = color.New(color.FgYellow).SprintfFunc()
 	protocolError     = color.New(color.FgHiYellow, color.BgRed).SprintfFunc()
-	targetColor       = color.New(color.FgHiWhite).SprintfFunc()
+	targetColor       = color.New(color.FgWhite, color.Faint).SprintfFunc()
 	methodColor       = color.New(color.FgHiYellow).SprintfFunc()
 	errorColor        = color.New(color.BgRed, color.FgWhite).SprintfFunc()
 	protocolTargetID  = center("browser", 32)
@@ -83,6 +84,8 @@ func (f *FramesFormatter) Format(e *logrus.Entry) ([]byte, error) {
 		f.lastTime = e.Time.UnixNano()
 		timestamp = fmt.Sprintf("%s %s", timestamp, delta)
 	}
+
+	timestamp = timeColor(timestamp)
 
 	var protocolType = -1
 	var protocolMethod = ""
