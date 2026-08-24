@@ -10,6 +10,16 @@
 
 ```brew install --cask wendigo/tap/chrome-protocol-proxy```
 
+### Migrating from the old homebrew formula
+
+Since v0.7.1 the tap ships a cask instead of a formula. If you installed an older version (≤ 0.6.0) via `brew install wendigo/tap/chrome-protocol-proxy`, the old formula keg will keep shadowing the cask binary and `brew upgrade` won't pick up new versions. Migrate once with:
+
+```
+brew update
+brew uninstall --formula chrome-protocol-proxy
+brew install --cask wendigo/tap/chrome-protocol-proxy
+```
+
 ## Via scoop (Windows)
 
 ```
