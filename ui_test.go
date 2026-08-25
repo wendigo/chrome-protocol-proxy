@@ -138,13 +138,22 @@ func TestInteractiveUI(t *testing.T) {
 		t.Fatalf("client could not send: %v", err)
 	}
 
-	readUIMessage(t, ui, "client request frame", func(msg map[string]interface{}) bool {
+	var requestBoot string
+	var requestSeq float64
+	requestFrame := readUIMessage(t, ui, "client request frame", func(msg map[string]interface{}) bool {
 		if msg["type"] != "frame" || msg["direction"] != directionSend {
 			return false
 		}
 		message := msg["message"].(map[string]interface{})
 		return message["method"] == "Page.enable"
 	})
+
+	requestBoot, _ = requestFrame["boot"].(string)
+	requestSeq, _ = requestFrame["seq"].(float64)
+
+	if requestBoot == "" || requestSeq == 0 {
+		t.Fatalf("frame is missing boot/seq stamps: %+v", requestFrame)
+	}
 
 	// the browser response reaches both the client and the UI
 	client.SetReadDeadline(time.Now().Add(5 * time.Second))
@@ -156,9 +165,13 @@ func TestInteractiveUI(t *testing.T) {
 		t.Fatalf("client received unexpected response: %+v", clientReply)
 	}
 
-	readUIMessage(t, ui, "browser response frame", func(msg map[string]interface{}) bool {
+	responseFrame := readUIMessage(t, ui, "browser response frame", func(msg map[string]interface{}) bool {
 		return msg["type"] == "frame" && msg["direction"] == directionRecv
 	})
+
+	if seq, _ := responseFrame["seq"].(float64); seq <= requestSeq {
+		t.Fatalf("frame seq is not monotonic: request=%v response=%v", requestSeq, seq)
+	}
 
 	// a command injected from the UI reaches the browser, its response comes back
 	// to the UI marked as injected
@@ -209,4 +222,24 @@ func TestInteractiveUI(t *testing.T) {
 	readUIMessage(t, ui, "error message", func(msg map[string]interface{}) bool {
 		return msg["type"] == "error" && strings.Contains(fmt.Sprint(msg["message"]), "nope")
 	})
+
+	// a reconnecting UI client receives the recent buffer with the same boot and
+	// seq stamps, so it can skip frames it already has
+	reconnected := dialWS(t, wsURL(proxy, "/ui/ws"))
+
+	replayed := readUIMessage(t, reconnected, "replayed request frame", func(msg map[string]interface{}) bool {
+		if msg["type"] != "frame" {
+			return false
+		}
+		message := msg["message"].(map[string]interface{})
+		return message["method"] == "Page.enable" && msg["direction"] == directionSend
+	})
+
+	if boot, _ := replayed["boot"].(string); boot != requestBoot {
+		t.Fatalf("replayed frame boot mismatch: %q != %q", boot, requestBoot)
+	}
+
+	if seq, _ := replayed["seq"].(float64); seq != requestSeq {
+		t.Fatalf("replayed frame seq mismatch: %v != %v", seq, requestSeq)
+	}
 }

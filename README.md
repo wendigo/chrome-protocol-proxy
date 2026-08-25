@@ -87,6 +87,7 @@ Prebuilt binaries for Linux, macOS and Windows (amd64, arm and arm64) are availa
 While the proxy is running, an interactive UI is available on [http://localhost:9223/ui](http://localhost:9223/ui) (disable with `-ui=false`). It streams all captured protocol frames live and allows to:
 
 - search frames and filter them by pattern (include/exclude) and by type (requests, responses, events),
+- see requests coalesced with their responses in a single row, with per-command latency,
 - pause, resume and clear the captured stream, inspect any frame as pretty-printed JSON,
 - send DevTools protocol commands to any active connection (optionally within a session), including replaying captured requests.
 

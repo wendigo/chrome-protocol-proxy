@@ -146,6 +146,23 @@
   .badge-injected { background: #3b2a53; color: var(--injected); }
   .badge-error { background: #58211d; color: var(--error); }
 
+  .latency { color: var(--fg-dim); font-size: 10px; margin-left: 6px; }
+  .resp-part { color: var(--response); }
+  .resp-error { color: var(--error); }
+  .pending-part { color: var(--fg-dim); font-style: italic; }
+
+  tr.details .section-label {
+    color: var(--fg-dim);
+    margin: 6px 0 2px;
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+
+  .j-key { color: var(--request); }
+  .j-str { color: #a5d6ff; }
+  .j-num { color: var(--injected); }
+  .j-bool, .j-null { color: #ffa657; }
+
   tr.details td {
     background: var(--bg-alt);
     white-space: pre-wrap;
@@ -248,12 +265,18 @@
   var state = {
     frames: [],
     conns: [],
-    pending: {},   // connId|sessionId|id -> request method
+    pending: {},   // connId|sessionId|id -> pending request frame
     sessions: {},  // sessionId -> true
     paused: false,
     autoscroll: true,
-    dirty: false
+    dirty: false,
+    boot: null,   // proxy process id from frame stamps
+    lastSeq: 0    // highest frame seq seen for that boot
   };
+
+  // rendered row per frame, so a row can be refreshed in place when its
+  // response arrives; frames dropped from state.frames fall out on their own
+  var rowMap = new WeakMap();
 
   var el = function(id) { return document.getElementById(id); };
   var framesBody = el("frames");
@@ -297,15 +320,24 @@
     }
 
     if (frame.kind === "request") {
-      state.pending[frame.connId + "|" + sessionId + "|" + m.id] = m.method;
+      state.pending[frame.connId + "|" + sessionId + "|" + m.id] = frame;
       frame.label = m.method + " (" + m.id + ")";
     } else if (frame.kind === "event") {
       frame.label = m.method;
     } else {
       var key = frame.connId + "|" + sessionId + "|" + m.id;
-      var method = state.pending[key];
+      var request = state.pending[key];
       delete state.pending[key];
-      frame.label = (method || "?") + "* (" + m.id + ")";
+
+      if (request) {
+        // coalesce into the request frame instead of adding a standalone row
+        request.response = frame;
+        request.searchText += " " + frame.searchText;
+        frame.pairedInto = request;
+        return null;
+      }
+
+      frame.label = "?* (" + m.id + ")";
     }
 
     return frame;
@@ -316,7 +348,11 @@
   }
 
   function matches(frame) {
-    if (frame.kind === "request" && !el("show-requests").checked) return false;
+    if (frame.kind === "request") {
+      // a paired row carries its response, so either checkbox keeps it visible
+      var visible = el("show-requests").checked || (frame.response && el("show-responses").checked);
+      if (!visible) return false;
+    }
     if ((frame.kind === "response" || frame.kind === "error") && !el("show-responses").checked) return false;
     if (frame.kind === "event" && !el("show-events").checked) return false;
     if (frame.injected && !el("show-injected").checked) return false;
@@ -339,29 +375,116 @@
     return false;
   }
 
-  function rowFor(frame, index) {
+  function payloadPreview(frame) {
+    if (frame.kind !== "request") {
+      return escapeHTML(shorten(frame.rawText, 500));
+    }
+
+    var params = frame.message.params ? JSON.stringify(frame.message.params) : "{}";
+    var preview = escapeHTML(shorten(params, 250));
+
+    if (frame.response) {
+      var m = frame.response.message;
+      var cls = m.error ? "resp-error" : "resp-part";
+      preview += ' ⇒ <span class="' + cls + '">' +
+        escapeHTML(shorten(JSON.stringify(m.error || m.result || {}), 250)) + "</span>";
+    } else {
+      preview += ' <span class="pending-part">⋯</span>';
+    }
+
+    return preview;
+  }
+
+  function rowFor(frame) {
     var tr = document.createElement("tr");
     tr.className = "frame";
-    tr.dataset.index = index;
 
     var badge = frame.injected ? '<span class="badge badge-injected">injected</span>' : "";
-    if (frame.kind === "error") badge += '<span class="badge badge-error">error</span>';
+    if (frame.kind === "error" || (frame.response && frame.response.message.error)) {
+      badge += '<span class="badge badge-error">error</span>';
+    }
+
+    var latency = frame.response
+      ? '<span class="latency">Δ' + (frame.response.ts - frame.ts) + 'ms</span>'
+      : "";
 
     tr.innerHTML =
       '<td class="time">' + fmtTime(frame.ts) + "</td>" +
-      '<td class="conn" title="' + frame.connId + '">' + shorten(frame.connId, 18) + "</td>" +
+      '<td class="conn" title="' + escapeHTML(frame.connId) + '">' + escapeHTML(shorten(frame.connId, 18)) + "</td>" +
       '<td class="dir">' + (frame.direction === "send" ? "→" : "←") + "</td>" +
-      '<td class="session" title="' + frame.sessionId + '">' + shorten(frame.sessionId, 10) + "</td>" +
-      '<td class="method-' + frame.kind + '">' + frame.label + badge + "</td>" +
-      '<td class="payload">' + escapeHTML(shorten(frame.rawText, 500)) + "</td>";
+      '<td class="session" title="' + escapeHTML(frame.sessionId) + '">' + escapeHTML(shorten(frame.sessionId, 10)) + "</td>" +
+      '<td class="method-' + frame.kind + '">' + escapeHTML(frame.label) + badge + latency + "</td>" +
+      '<td class="payload">' + payloadPreview(frame) + "</td>";
 
     tr.addEventListener("click", function() { toggleDetails(tr, frame); });
+    rowMap.set(frame, tr);
 
     return tr;
   }
 
+  // refreshRow redraws a frame's row in place once its response is paired,
+  // keeping an open details view open.
+  function refreshRow(frame) {
+    var tr = rowMap.get(frame);
+
+    if (!tr || !tr.parentNode) {
+      // the request row was filtered out but pairing may make it visible
+      // (e.g. only "responses" is checked)
+      if (matches(frame)) render();
+      return;
+    }
+
+    if (!matches(frame)) {
+      if (tr.nextSibling && tr.nextSibling.classList && tr.nextSibling.classList.contains("details")) {
+        tr.nextSibling.remove();
+      }
+      tr.remove();
+      shown--;
+      updateStatus();
+      return;
+    }
+
+    var expanded = tr.nextSibling && tr.nextSibling.classList && tr.nextSibling.classList.contains("details");
+    if (expanded) tr.nextSibling.remove();
+
+    var fresh = rowFor(frame);
+    tr.replaceWith(fresh);
+    if (expanded) toggleDetails(fresh, frame);
+  }
+
   function escapeHTML(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // highlightJSON pretty-prints a parsed JSON value as syntax-highlighted HTML;
+  // built from the value (not regexes over text) so escaping stays airtight
+  function highlightJSON(value, indent) {
+    indent = indent || "";
+    var next = indent + "  ";
+
+    if (value === null) return '<span class="j-null">null</span>';
+
+    switch (typeof value) {
+      case "string":
+        return '<span class="j-str">' + escapeHTML(JSON.stringify(value)) + "</span>";
+      case "number":
+        return '<span class="j-num">' + value + "</span>";
+      case "boolean":
+        return '<span class="j-bool">' + value + "</span>";
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) return "[]";
+      return "[\n" + value.map(function(v) {
+        return next + highlightJSON(v, next);
+      }).join(",\n") + "\n" + indent + "]";
+    }
+
+    var keys = Object.keys(value);
+    if (keys.length === 0) return "{}";
+    return "{\n" + keys.map(function(k) {
+      return next + '<span class="j-key">' + escapeHTML(JSON.stringify(k)) + "</span>: " + highlightJSON(value[k], next);
+    }).join(",\n") + "\n" + indent + "}";
   }
 
   function toggleDetails(tr, frame) {
@@ -396,15 +519,35 @@
     copy.textContent = "copy JSON";
     copy.addEventListener("click", function(e) {
       e.stopPropagation();
-      navigator.clipboard && navigator.clipboard.writeText(frame.rawText);
+      var text = frame.response
+        ? JSON.stringify({request: frame.message, response: frame.response.message}, null, 2)
+        : frame.rawText;
+      navigator.clipboard && navigator.clipboard.writeText(text);
     });
     actions.appendChild(copy);
 
-    var pre = document.createElement("pre");
-    pre.textContent = JSON.stringify(frame.message, null, 2);
-
     td.appendChild(actions);
-    td.appendChild(pre);
+
+    var section = function(label, message) {
+      var caption = document.createElement("div");
+      caption.className = "section-label";
+      caption.textContent = label;
+      td.appendChild(caption);
+
+      var pre = document.createElement("pre");
+      pre.innerHTML = highlightJSON(message);
+      td.appendChild(pre);
+    };
+
+    if (frame.response) {
+      section("request", frame.message);
+      section("response (Δ" + (frame.response.ts - frame.ts) + "ms)", frame.response.message);
+    } else {
+      var pre = document.createElement("pre");
+      pre.innerHTML = highlightJSON(frame.message);
+      td.appendChild(pre);
+    }
+
     details.appendChild(td);
     tr.after(details);
   }
@@ -416,9 +559,9 @@
     shown = 0;
 
     var fragment = document.createDocumentFragment();
-    state.frames.forEach(function(frame, index) {
+    state.frames.forEach(function(frame) {
       if (matches(frame)) {
-        fragment.appendChild(rowFor(frame, index));
+        fragment.appendChild(rowFor(frame));
         shown++;
       }
     });
@@ -428,10 +571,10 @@
     scroll();
   }
 
-  function append(frame, index) {
+  function append(frame) {
     if (!matches(frame)) return;
 
-    framesBody.appendChild(rowFor(frame, index));
+    framesBody.appendChild(rowFor(frame));
     shown++;
 
     while (framesBody.children.length > MAX_FRAMES) {
@@ -511,7 +654,27 @@
       try { msg = JSON.parse(e.data); } catch (err) { return; }
 
       if (msg.type === "frame") {
+        // skip frames already seen: on reconnect the proxy replays its recent
+        // buffer, which overlaps with what this page already holds
+        if (msg.boot !== state.boot) {
+          state.boot = msg.boot;
+          state.lastSeq = 0;
+        }
+        if (msg.seq <= state.lastSeq) return;
+        state.lastSeq = msg.seq;
+
         var frame = prepare(msg);
+
+        if (!frame) {
+          // response coalesced into its request: refresh that row in place
+          if (state.paused) {
+            state.dirty = true;
+          } else if (msg.pairedInto) {
+            refreshRow(msg.pairedInto);
+          }
+          return;
+        }
+
         state.frames.push(frame);
 
         if (state.frames.length > MAX_FRAMES) {
@@ -525,7 +688,7 @@
           state.dirty = false;
           render();
         } else {
-          append(frame, state.frames.length - 1);
+          append(frame);
         }
       } else if (msg.type === "connections") {
         state.conns = msg.connections || [];
@@ -613,6 +776,9 @@
   updateConnections();
   updateStatus();
   connect();
+
+  // debug handle; also allows simulating a dropped connection from the console
+  window.__proxyUI = { state: state, socket: function() { return ws; } };
 })();
 </script>
 </body>

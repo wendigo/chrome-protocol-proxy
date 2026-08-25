@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -28,7 +29,12 @@ const (
 )
 
 type uiFrame struct {
-	Type      string          `json:"type"`
+	Type string `json:"type"`
+	// Boot identifies the proxy process and Seq numbers frames within it, so a
+	// reconnecting UI can skip frames it already has when the recent buffer is
+	// replayed to it.
+	Boot      string          `json:"boot"`
+	Seq       uint64          `json:"seq"`
 	ConnID    string          `json:"connId"`
 	Direction string          `json:"direction"`
 	Timestamp int64           `json:"ts"`
@@ -111,6 +117,8 @@ type uiHub struct {
 	clients        map[*websocket.Conn]chan []byte
 	conns          map[string]*proxiedConnection
 	recent         [][]byte
+	bootID         string
+	frameSeq       uint64
 	connSeq        uint64
 	nextInjectedID uint64
 }
@@ -118,6 +126,7 @@ type uiHub struct {
 var hub = &uiHub{
 	clients:        make(map[*websocket.Conn]chan []byte),
 	conns:          make(map[string]*proxiedConnection),
+	bootID:         fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano()),
 	nextInjectedID: injectedIDBase,
 }
 
@@ -179,8 +188,14 @@ func (h *uiHub) publishFrame(conn *proxiedConnection, direction string, raw []by
 		return
 	}
 
+	h.mu.Lock()
+
+	h.frameSeq++
+
 	frame := uiFrame{
 		Type:      "frame",
+		Boot:      h.bootID,
+		Seq:       h.frameSeq,
 		ConnID:    conn.id,
 		Direction: direction,
 		Timestamp: time.Now().UnixMilli(),
@@ -190,10 +205,10 @@ func (h *uiHub) publishFrame(conn *proxiedConnection, direction string, raw []by
 
 	buf, err := json.Marshal(frame)
 	if err != nil {
+		h.mu.Unlock()
 		return
 	}
 
-	h.mu.Lock()
 	h.recent = append(h.recent, buf)
 	if len(h.recent) > recentFramesLimit {
 		h.recent = h.recent[len(h.recent)-recentFramesLimit:]
